@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
@@ -18,5 +18,21 @@ describe('CreateCustomGroupView', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: /create new group/i }),
     ).toBeInTheDocument();
+  });
+
+  it('allows typing into the title input and shows the remaining-character counter', () => {
+    renderView();
+    const input = screen.getByLabelText(/title/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Olympiad Squad' } });
+    expect(input.value).toBe('Olympiad Squad');
+    expect(screen.getByText(/106 characters left/i)).toBeInTheDocument();
+  });
+
+  it('does not allow typing past 120 characters', () => {
+    renderView();
+    const input = screen.getByLabelText(/title/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'a'.repeat(150) } });
+    expect(input.value.length).toBe(120);
+    expect(screen.getByText(/0 characters left/i)).toBeInTheDocument();
   });
 });
