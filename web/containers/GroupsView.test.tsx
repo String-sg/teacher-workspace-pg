@@ -28,4 +28,32 @@ describe('GroupsView', () => {
     renderAt();
     expect(await screen.findByRole('heading', { level: 1, name: /groups/i })).toBeInTheDocument();
   });
+
+  it('renders the custom-groups table populated from the loader', async () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/groups',
+          Component: GroupsView,
+          loader: () => ({
+            customGroups: [
+              {
+                customGroupId: 5,
+                name: 'Olympiad Study Group',
+                studentCount: 8,
+                createdBy: 1013,
+                createdByName: 'TAN GUANG SHIN',
+                isShared: false,
+                createdAt: '2026-03-01T08:00:00.000Z',
+              },
+            ],
+            assigned: { classes: [], ccaGroups: [] },
+          }),
+        },
+      ],
+      { initialEntries: ['/groups'] },
+    );
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByText('Olympiad Study Group')).toBeInTheDocument();
+  });
 });
