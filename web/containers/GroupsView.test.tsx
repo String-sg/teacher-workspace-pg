@@ -18,6 +18,11 @@ function renderAt(path = '/groups') {
   return render(<RouterProvider router={router} />);
 }
 
+// The sidebar nav entry added to `RootLayout` (Task 2 of the plan) is not
+// covered by a unit test here: rendering the real `RootLayout` or even
+// `SidebarItem` in isolation pulls `@flow/icons` v0.1.0, whose ESM bundle
+// uses an unresolvable directory import. The wire-up is exercised by the
+// manual smoke test (Task 14 of the plan).
 describe('GroupsView', () => {
   it('renders the page heading', async () => {
     renderAt();
