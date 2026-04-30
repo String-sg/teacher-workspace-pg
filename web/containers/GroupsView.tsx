@@ -3,6 +3,7 @@ import { useLoaderData } from 'react-router';
 
 import { fetchCustomGroups, fetchGroupsAssigned } from '~/api/client';
 import type { PGApiCustomGroupSummary, PGApiGroupsAssigned } from '~/api/types';
+import { AssignedGroupsSection } from '~/components/groups/AssignedGroupsSection';
 import { CustomGroupsTable } from '~/components/groups/CustomGroupsTable';
 
 interface GroupsLoaderData {
@@ -20,6 +21,12 @@ const GroupsView: React.FC = () => {
   return (
     <div className="px-4 py-6 md:px-6">
       <h1 className="text-2xl font-semibold">Groups</h1>
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold">Assigned Groups</h2>
+        <div className="mt-3">
+          <AssignedGroupsSection assigned={data.assigned} />
+        </div>
+      </section>
       <section className="mt-8">
         <h2 className="text-lg font-semibold">
           Custom Groups{' '}

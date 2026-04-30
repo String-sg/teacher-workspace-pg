@@ -29,6 +29,36 @@ describe('GroupsView', () => {
     expect(await screen.findByRole('heading', { level: 1, name: /groups/i })).toBeInTheDocument();
   });
 
+  it('renders the assigned-groups section above the custom-groups section', async () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/groups',
+          Component: GroupsView,
+          loader: () => ({
+            customGroups: [],
+            assigned: {
+              classes: [
+                {
+                  classId: 1005,
+                  className: 'P1 KINDNESS',
+                  level: 'P1',
+                  year: 2026,
+                  role: 'FT',
+                  studentCount: 30,
+                },
+              ],
+              ccaGroups: [],
+            },
+          }),
+        },
+      ],
+      { initialEntries: ['/groups'] },
+    );
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByText('P1 KINDNESS')).toBeInTheDocument();
+  });
+
   it('renders the custom-groups table populated from the loader', async () => {
     const router = createMemoryRouter(
       [
