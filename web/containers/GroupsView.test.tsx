@@ -29,6 +29,12 @@ describe('GroupsView', () => {
     expect(await screen.findByRole('heading', { level: 1, name: /groups/i })).toBeInTheDocument();
   });
 
+  it('shows a "Create custom group" CTA that links to /groups/customGroups/new', async () => {
+    renderAt();
+    const cta = await screen.findByRole('link', { name: /create custom group/i });
+    expect(cta).toHaveAttribute('href', '/groups/customGroups/new');
+  });
+
   it('renders the assigned-groups section above the custom-groups section', async () => {
     const router = createMemoryRouter(
       [
