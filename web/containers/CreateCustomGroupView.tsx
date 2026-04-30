@@ -1,6 +1,15 @@
+import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
+import { Link } from 'react-router';
 
-import { Input } from '~/components/ui';
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+} from '~/components/ui';
 
 const TITLE_MAX = 120;
 
@@ -25,6 +34,36 @@ const CreateCustomGroupView: React.FC = () => {
         <p className="mt-1 text-xs text-muted-foreground">
           {TITLE_MAX - title.length} characters left
         </p>
+
+        <div className="mt-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">0 students added.</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Plus className="size-4" aria-hidden />
+                  Add Students
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem disabled>Add manually</DropdownMenuItem>
+                <DropdownMenuItem disabled>Upload via Excel</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="mt-2 rounded-md bg-muted p-6 text-center text-sm text-muted-foreground">
+            No students added yet.
+          </div>
+        </div>
+
+        <div className="mt-8 flex items-center justify-end gap-3">
+          <Link to="/groups" className="text-sm font-medium text-muted-foreground hover:underline">
+            Cancel
+          </Link>
+          <Button disabled title="Add at least one student to create the group">
+            Create Now
+          </Button>
+        </div>
       </div>
     </div>
   );
