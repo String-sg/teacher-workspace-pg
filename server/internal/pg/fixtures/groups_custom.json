@@ -1,19 +1,13 @@
-[
-  {
-    "id": 5,
-    "groupName": "Olympiad Study Group",
-    "createdBy": "TAN GUANG SHIN",
-    "createdAt": "2026-03-01T08:00:00.000Z",
-    "owners": [{ "staffId": 1013, "staffName": "TAN GUANG SHIN" }],
-    "studentsList": [
-      { "studentId": 1, "studentName": "Student 1" },
-      { "studentId": 2, "studentName": "Student 2" },
-      { "studentId": 3, "studentName": "Student 3" },
-      { "studentId": 4, "studentName": "Student 4" },
-      { "studentId": 5, "studentName": "Student 5" },
-      { "studentId": 6, "studentName": "Student 6" },
-      { "studentId": 7, "studentName": "Student 7" },
-      { "studentId": 8, "studentName": "Student 8" }
-    ]
-  }
-]
+{
+  "customGroups": [
+    {
+      "customGroupId": 5,
+      "name": "Olympiad Study Group",
+      "studentCount": 8,
+      "createdBy": 1013,
+      "createdByName": "TAN GUANG SHIN",
+      "isShared": false,
+      "createdAt": "2026-03-01T08:00:00.000Z"
+    }
+  ]
+}

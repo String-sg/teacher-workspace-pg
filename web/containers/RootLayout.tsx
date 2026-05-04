@@ -1,5 +1,5 @@
 import { TooltipProvider } from '@flow/core';
-import { FolderKanban, HelpCircle, Home, Mail, UsersRound } from '@flow/icons';
+import { HelpCircle, Home, Mail, UsersRound } from '@flow/icons';
 import React, { useMemo, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router';
 
@@ -27,7 +27,6 @@ const RootLayout: React.FC = () => {
     switch (segment) {
       case 'students':
       case 'posts':
-      case 'groups':
         return segment;
       default:
         return '/';
@@ -62,13 +61,6 @@ const RootLayout: React.FC = () => {
                 tooltip="Posts"
                 to="/posts"
                 selected={selected === 'posts'}
-              />
-              <SidebarItem
-                icon={FolderKanban}
-                label="Groups"
-                tooltip="Groups"
-                to="/groups"
-                selected={selected === 'groups'}
               />
             </SidebarContent>
 

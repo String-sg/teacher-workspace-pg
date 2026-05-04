@@ -1,16 +1,16 @@
 {
-  "id": 5,
-  "groupName": "Olympiad Study Group",
-  "createdBy": "TAN GUANG SHIN",
-  "createdAt": "2026-03-01T08:00:00.000Z",
-  "owners": [{ "staffId": 1013, "staffName": "TAN GUANG SHIN" }],
-  "studentsList": [
+  "customGroupId": 5,
+  "name": "Olympiad Study Group",
+  "createdBy": 1013,
+  "createdByName": "TAN GUANG SHIN",
+  "isShared": false,
+  "sharedWith": [],
+  "students": [
     {
       "studentId": 1,
       "studentName": "TAN XIAO MING",
       "className": "4A",
       "indexNumber": 15,
-      "uinFinNo": "S9000001A",
       "ccas": ["BOXING"]
     },
     {
@@ -18,7 +18,6 @@
       "studentName": "LEE WEI LIANG",
       "className": "4A",
       "indexNumber": 8,
-      "uinFinNo": "S9000002B",
       "ccas": []
     },
     {
@@ -26,8 +25,8 @@
       "studentName": "CAROL CHEN HUI",
       "className": "4A",
       "indexNumber": 3,
-      "uinFinNo": "S9000003C",
       "ccas": ["CHOIR"]
     }
-  ]
+  ],
+  "createdAt": "2026-03-01T08:00:00.000Z"
 }
