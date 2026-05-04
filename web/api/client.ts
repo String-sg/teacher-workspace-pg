@@ -850,6 +850,10 @@ export async function fetchCustomGroupDetail(id: number): Promise<PGApiCustomGro
   if (!item) {
     throw new Response('Group not found', { status: 404 });
   }
+  if (Array.isArray(raw) && raw.length > 1) {
+    // eslint-disable-next-line no-console -- intentional diagnostic for unexpected PGW shape
+    console.warn('fetchCustomGroupDetail: expected 1 element, got %d', raw.length);
+  }
   return mapPgwCustomGroupDetail(item);
 }
 
@@ -880,7 +884,7 @@ export async function updateCustomGroup(
 
 export async function shareCustomGroup(id: number, staffIds: number[]): Promise<void> {
   await mutateApi<void>('PUT', `/groups/custom/${id}/share`, {
-    selectedStaff: staffIds,
+    staffIds,
   });
 }
 
