@@ -36,41 +36,43 @@ export const StudentResultsTable: React.FC<StudentResultsTableProps> = ({
   const rowIds = rows.map((r) => r.studentId);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-10">
-            <Checkbox
-              aria-label="Select all on this page"
-              checked={allSelected}
-              onCheckedChange={() => onToggleAll(rowIds)}
-            />
-          </TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Class / Index</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((s) => (
-          <TableRow key={s.studentId}>
-            <TableCell>
+    <div className="max-h-[40rem] overflow-auto rounded-md border">
+      <Table>
+        <TableHeader className="sticky top-0 z-10 bg-background">
+          <TableRow>
+            <TableHead className="w-10">
               <Checkbox
-                aria-label={`Select ${s.studentName}`}
-                checked={selectedIds.has(s.studentId)}
-                onCheckedChange={() => onToggle(s.studentId)}
+                aria-label="Select all on this page"
+                checked={allSelected}
+                onCheckedChange={() => onToggleAll(rowIds)}
               />
-            </TableCell>
-            <TableCell>
-              <div className="font-medium">{s.studentName}</div>
-              <div className="text-xs text-muted-foreground">{s.uinFinNo}</div>
-            </TableCell>
-            <TableCell>
-              <div>{s.className}</div>
-              <div className="text-xs text-muted-foreground">#{s.classSerialNo}</div>
-            </TableCell>
+            </TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Class / Index</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {rows.map((s) => (
+            <TableRow key={s.studentId}>
+              <TableCell>
+                <Checkbox
+                  aria-label={`Select ${s.studentName}`}
+                  checked={selectedIds.has(s.studentId)}
+                  onCheckedChange={() => onToggle(s.studentId)}
+                />
+              </TableCell>
+              <TableCell>
+                <div className="font-medium">{s.studentName}</div>
+                <div className="text-xs text-muted-foreground">{s.uinFinNo}</div>
+              </TableCell>
+              <TableCell>
+                <div>{s.className}</div>
+                <div className="text-xs text-muted-foreground">#{s.classSerialNo}</div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
