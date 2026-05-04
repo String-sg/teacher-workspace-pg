@@ -850,12 +850,14 @@ export async function createCustomGroup(payload: {
   studentIds: number[];
 }): Promise<PGApiCreateCustomGroupResponse> {
   // Real PGW field names diverge from the contract doc:
-  //   `groupName` (not `name`), `selectedSchoolStudents` (not `studentIds`).
-  // Confirmed via -400 responses during PGTW-13c smoke test.
-  return mutateApi<PGApiCreateCustomGroupResponse>('POST', '/groups/custom', {
+  //   - request: `groupName` (not `name`), `selectedSchoolStudents` (not `studentIds`)
+  //   - response: `id` (not `customGroupId`)
+  // Confirmed via -400 responses + smoke testing during PGTW-13c.
+  const raw = await mutateApi<{ id: number; customGroupId?: number }>('POST', '/groups/custom', {
     groupName: payload.name,
     selectedSchoolStudents: payload.studentIds,
   });
+  return { customGroupId: raw.customGroupId ?? raw.id };
 }
 
 export async function updateCustomGroup(
