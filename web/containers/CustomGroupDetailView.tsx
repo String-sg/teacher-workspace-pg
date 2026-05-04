@@ -1,9 +1,11 @@
 import React from 'react';
-import { useLoaderData } from 'react-router';
+import { Link, useLoaderData } from 'react-router';
 
 import { fetchCustomGroupDetail } from '~/api/client';
 import type { PGApiCustomGroupDetail } from '~/api/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui';
+import { StudentsByClassList } from '~/components/groups/StudentsByClassList';
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui';
+import { formatDate } from '~/helpers/dateTime';
 
 export async function loader({
   params,
@@ -32,10 +34,45 @@ const CustomGroupDetailView: React.FC = () => {
             <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>
           <TabsContent value="students" className="mt-4">
-            {/* Task 4 */}
+            <StudentsByClassList students={data.students} />
           </TabsContent>
-          <TabsContent value="details" className="mt-4">
-            {/* Task 5 */}
+          <TabsContent value="details" className="mt-4 space-y-6">
+            <p className="text-sm text-muted-foreground">
+              Created on {formatDate(data.createdAt)} by {data.createdByName}.
+            </p>
+            {data.sharedWith.length > 0 ? (
+              <div className="text-sm">
+                <span className="font-medium">Group shared with:</span>{' '}
+                {data.sharedWith.map((s) => s.staffName).join(', ')}
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <article className="rounded-md border p-4">
+                <h3 className="font-semibold">Edit this custom group</h3>
+                <Button asChild variant="outline" className="mt-3">
+                  <Link to={`/groups/customGroups/${data.customGroupId}/edit`}>Edit Group</Link>
+                </Button>
+              </article>
+              <article className="rounded-md border p-4">
+                <h3 className="font-semibold">Share this custom group</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  You will be granting access to edit this group. Please be certain.
+                </p>
+                <Button variant="outline" className="mt-3" disabled>
+                  Share Group
+                </Button>
+              </article>
+              <article className="rounded-md border p-4">
+                <h3 className="font-semibold">Delete this custom group</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Once you delete this custom group, you can never get it back again.
+                </p>
+                <Button variant="outline" className="mt-3" disabled>
+                  Delete Forever
+                </Button>
+              </article>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -58,4 +58,24 @@ describe('CustomGroupDetailView', () => {
     renderAt();
     expect(await screen.findByRole('tab', { name: /students \(1\)/i })).toBeInTheDocument();
   });
+
+  it('renders the student list on the Students tab by default', async () => {
+    renderAt();
+    expect(await screen.findByText('TAN XIAO MING')).toBeInTheDocument();
+  });
+
+  it('Details tab shows creator metadata + the three action cards', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    renderAt();
+    const detailsTab = await screen.findByRole('tab', { name: /details/i });
+    fireEvent.click(detailsTab);
+    expect(await screen.findByText(/created on/i)).toBeInTheDocument();
+    expect(screen.getByText(/TAN GUANG SHIN/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /edit group/i })).toHaveAttribute(
+      'href',
+      '/groups/customGroups/5/edit',
+    );
+    expect(screen.getByRole('button', { name: /share group/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /delete forever/i })).toBeDisabled();
+  });
 });
