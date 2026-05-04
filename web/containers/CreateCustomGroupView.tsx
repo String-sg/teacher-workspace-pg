@@ -1,7 +1,8 @@
 import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
+import { createCustomGroup } from '~/api/client';
 import type { PGApiSchoolStudent } from '~/api/types';
 import {
   Button,
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from '~/components/ui';
+import { notify } from '~/lib/notify';
 
 const TITLE_MAX = 120;
 
@@ -21,11 +23,29 @@ interface IncomingNavState {
 const CreateCustomGroupView: React.FC = () => {
   const [title, setTitle] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
   const navState = (location.state as IncomingNavState | null) ?? {};
   const [students] = useState<PGApiSchoolStudent[]>(navState.addedStudents ?? []);
+  const [submitting, setSubmitting] = useState(false);
 
   const studentCount = students.length;
   const canSave = title.trim().length > 0 && studentCount > 0;
+
+  async function handleSave() {
+    if (!canSave) return;
+    setSubmitting(true);
+    try {
+      const { customGroupId } = await createCustomGroup({
+        name: title.trim(),
+        studentIds: students.map((s) => s.studentId),
+      });
+      navigate(`/groups/customGroups/${customGroupId}`);
+    } catch (err) {
+      setSubmitting(false);
+      if (!(err instanceof Error)) throw err;
+      notify.error('Could not create the group. Please try again.');
+    }
+  }
 
   return (
     <div className="flex justify-center px-6 py-6">
@@ -96,10 +116,11 @@ const CreateCustomGroupView: React.FC = () => {
               Cancel
             </Link>
             <Button
-              disabled={!canSave}
+              disabled={!canSave || submitting}
               title={canSave ? undefined : 'Add at least one student to create the group'}
+              onClick={handleSave}
             >
-              Create Now
+              {submitting ? 'Creating…' : 'Create Now'}
             </Button>
           </div>
         </div>

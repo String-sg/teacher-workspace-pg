@@ -1,8 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { Component as CreateCustomGroupView } from './CreateCustomGroupView';
+
+vi.mock('~/api/client', async (orig) => {
+  const actual = (await orig()) as Record<string, unknown>;
+  return {
+    ...actual,
+    createCustomGroup: vi.fn().mockResolvedValue({ customGroupId: 42 }),
+  };
+});
 
 function renderView() {
   const router = createMemoryRouter(
@@ -55,6 +63,45 @@ describe('CreateCustomGroupView', () => {
       'href',
       '/groups/customGroups/new/addStudents',
     );
+  });
+
+  it('clicking "Create Now" with a title and students POSTs and navigates to /groups/customGroups/:id', async () => {
+    const { createCustomGroup } = await import('~/api/client');
+    const router = createMemoryRouter(
+      [
+        { path: '/groups/customGroups/new', Component: CreateCustomGroupView },
+        { path: '/groups/customGroups/:id', element: <div>detail page</div> },
+      ],
+      {
+        initialEntries: [
+          {
+            pathname: '/groups/customGroups/new',
+            state: {
+              addedStudents: [
+                {
+                  studentId: 1,
+                  studentName: 'ALDDIN',
+                  uinFinNo: 'S9000003A',
+                  classSerialNo: '15',
+                  classCode: 'H6-05',
+                  className: 'H6 KINDNESS',
+                  levelCode: 'H6',
+                  levelDescription: 'HIGHER 6',
+                  cca: [],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    );
+    render(<RouterProvider router={router} />);
+
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Olympiad' } });
+    fireEvent.click(screen.getByRole('button', { name: /create now/i }));
+
+    await screen.findByText('detail page');
+    expect(createCustomGroup).toHaveBeenCalledWith({ name: 'Olympiad', studentIds: [1] });
   });
 
   it('reads addedStudents from router state and renders counter + names', async () => {
