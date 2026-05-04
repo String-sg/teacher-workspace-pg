@@ -849,14 +849,23 @@ export async function createCustomGroup(payload: {
   name: string;
   studentIds: number[];
 }): Promise<PGApiCreateCustomGroupResponse> {
-  return mutateApi<PGApiCreateCustomGroupResponse>('POST', '/groups/custom', payload);
+  // Real PGW expects `groupName`, not `name` (matches the read shape — see
+  // `mapPgwCustomGroup`). The contract doc says `name`; PGW responded with
+  // `-400 "groupName" is required` so we use the wire field here.
+  return mutateApi<PGApiCreateCustomGroupResponse>('POST', '/groups/custom', {
+    groupName: payload.name,
+    studentIds: payload.studentIds,
+  });
 }
 
 export async function updateCustomGroup(
   id: number,
   payload: { name: string; studentIds: number[] },
 ): Promise<void> {
-  await mutateApi<void>('PUT', `/groups/custom/${id}`, payload);
+  await mutateApi<void>('PUT', `/groups/custom/${id}`, {
+    groupName: payload.name,
+    studentIds: payload.studentIds,
+  });
 }
 
 export function fetchClassDetail(classId: number) {
