@@ -841,8 +841,16 @@ function mapPgwCustomGroupDetail(raw: PgwRawCustomGroupDetail): PGApiCustomGroup
 }
 
 export async function fetchCustomGroupDetail(id: number): Promise<PGApiCustomGroupDetail> {
-  const raw = await fetchApi<PgwRawCustomGroupDetail>(`/groups/custom/${id}`);
-  return mapPgwCustomGroupDetail(raw);
+  // Real PGW returns `body` as a single-element array even for detail
+  // endpoints (matches the list shape). The mock fixture mirrors this.
+  const raw = await fetchApi<PgwRawCustomGroupDetail | PgwRawCustomGroupDetail[]>(
+    `/groups/custom/${id}`,
+  );
+  const item = Array.isArray(raw) ? raw[0] : raw;
+  if (!item) {
+    throw new Response('Group not found', { status: 404 });
+  }
+  return mapPgwCustomGroupDetail(item);
 }
 
 export async function createCustomGroup(payload: {
