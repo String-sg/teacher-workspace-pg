@@ -25,8 +25,6 @@ const CustomGroupDetailView: React.FC = () => {
   const revalidator = useRevalidator();
   const [shareOpen, setShareOpen] = useState(false);
 
-  const excludeStaffIds = [data.createdBy, ...data.sharedWith.map((s) => s.staffId)];
-
   async function handleShare(staffIds: number[]) {
     await shareCustomGroup(data.customGroupId, staffIds);
     revalidator.revalidate();
@@ -92,7 +90,8 @@ const CustomGroupDetailView: React.FC = () => {
           open={shareOpen}
           onClose={() => setShareOpen(false)}
           staff={staff}
-          excludeStaffIds={excludeStaffIds}
+          creatorStaffId={data.createdBy}
+          alreadySharedStaffIds={data.sharedWith.map((s) => s.staffId)}
           onShare={handleShare}
         />
       </div>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import type { PGApiSchoolStaff } from '~/api/types';
 import { StaffSelector } from '~/components/comms/staff-selector';
@@ -18,7 +18,8 @@ interface ShareGroupModalProps {
   open: boolean;
   onClose: () => void;
   staff: PGApiSchoolStaff[];
-  excludeStaffIds: number[];
+  creatorStaffId: number;
+  alreadySharedStaffIds: number[];
   onShare: (staffIds: number[]) => Promise<void>;
 }
 
@@ -26,7 +27,8 @@ export const ShareGroupModal: React.FC<ShareGroupModalProps> = ({
   open,
   onClose,
   staff,
-  excludeStaffIds,
+  creatorStaffId,
+  alreadySharedStaffIds,
   onShare,
 }) => {
   return (
@@ -39,7 +41,8 @@ export const ShareGroupModal: React.FC<ShareGroupModalProps> = ({
       {open && (
         <ShareGroupModalContent
           staff={staff}
-          excludeStaffIds={excludeStaffIds}
+          creatorStaffId={creatorStaffId}
+          alreadySharedStaffIds={alreadySharedStaffIds}
           onShare={onShare}
           onClose={onClose}
         />
@@ -50,25 +53,51 @@ export const ShareGroupModal: React.FC<ShareGroupModalProps> = ({
 
 const ShareGroupModalContent: React.FC<{
   staff: PGApiSchoolStaff[];
-  excludeStaffIds: number[];
+  creatorStaffId: number;
+  alreadySharedStaffIds: number[];
   onShare: (staffIds: number[]) => Promise<void>;
   onClose: () => void;
-}> = ({ staff, excludeStaffIds, onShare, onClose }) => {
-  const [selected, setSelected] = useState<SelectedStaff[]>([]);
+}> = ({ staff, creatorStaffId, alreadySharedStaffIds, onShare, onClose }) => {
+  const [selectorReady, setSelectorReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const excludeSet = useMemo(() => new Set(excludeStaffIds), [excludeStaffIds]);
-  const filteredStaff = useMemo(
-    () => staff.filter((s) => !excludeSet.has(s.staffId)),
-    [staff, excludeSet],
+  const alreadySharedSet = useMemo(() => new Set(alreadySharedStaffIds), [alreadySharedStaffIds]);
+
+  const pickerStaff = useMemo(
+    () => staff.filter((s) => s.staffId !== creatorStaffId),
+    [staff, creatorStaffId],
   );
 
+  const initialSelected = useMemo<SelectedStaff[]>(
+    () =>
+      staff
+        .filter((s) => alreadySharedSet.has(s.staffId))
+        .map((s) => ({
+          id: s.staffId.toString(),
+          label: s.name,
+          type: 'individual' as const,
+          count: 1,
+        })),
+    [staff, alreadySharedSet],
+  );
+
+  const [selected, setSelected] = useState<SelectedStaff[]>(initialSelected);
+
+  const newStaffIds = useMemo(
+    () => selected.map((s) => Number(s.id)).filter((id) => !alreadySharedSet.has(id)),
+    [selected, alreadySharedSet],
+  );
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setSelectorReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   async function handleShare() {
-    if (selected.length === 0) return;
+    if (newStaffIds.length === 0) return;
     setSubmitting(true);
     try {
-      const staffIds = selected.map((s) => Number(s.id));
-      await onShare(staffIds);
+      await onShare(newStaffIds);
       onClose();
     } catch {
       notify.error('Could not share the group. Please try again.');
@@ -94,11 +123,13 @@ const ShareGroupModalContent: React.FC<{
       </ul>
 
       <div>
-        <StaffSelector value={selected} onChange={setSelected} staff={filteredStaff} />
+        {selectorReady && (
+          <StaffSelector value={selected} onChange={setSelected} staff={pickerStaff} />
+        )}
       </div>
 
       <DialogFooter>
-        <Button disabled={selected.length === 0 || submitting} onClick={handleShare}>
+        <Button disabled={newStaffIds.length === 0 || submitting} onClick={handleShare}>
           {submitting ? 'Sharing…' : 'Share group'}
         </Button>
       </DialogFooter>

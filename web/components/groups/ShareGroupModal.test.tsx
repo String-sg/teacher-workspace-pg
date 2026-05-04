@@ -27,16 +27,18 @@ const schoolStaff: PGApiSchoolStaff[] = [
   { staffId: 1003, name: 'CHARLIE NG', email: 'charlie@school.edu.sg', className: 'P1 KINDNESS' },
 ];
 
-const excludeStaffIds = [1001];
-
-function renderModal(onShare = vi.fn().mockResolvedValue(undefined)) {
+function renderModal(
+  onShare = vi.fn().mockResolvedValue(undefined),
+  alreadySharedStaffIds: number[] = [],
+) {
   const onClose = vi.fn();
   render(
     <ShareGroupModal
       open={true}
       onClose={onClose}
       staff={schoolStaff}
-      excludeStaffIds={excludeStaffIds}
+      creatorStaffId={1001}
+      alreadySharedStaffIds={alreadySharedStaffIds}
       onShare={onShare}
     />,
   );
