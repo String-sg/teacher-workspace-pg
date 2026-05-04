@@ -49,6 +49,7 @@ import type {
   PGApiSchoolClass,
   PGApiSchoolStaffList,
   PGApiSchoolStudent,
+  PGApiStaffGroups,
   PGApiSession,
   PGApiUserProfile,
 } from './types';
@@ -664,6 +665,10 @@ export async function fetchSchoolClasses() {
 
 export function fetchSchoolStudents() {
   return fetchApi<PGApiSchoolStudent[]>('/school/students');
+}
+
+export function fetchSchoolStaffGroups() {
+  return fetchApi<PGApiStaffGroups>('/school/staffGroups');
 }
 
 export function fetchGroupsAssigned() {

@@ -156,7 +156,7 @@ export function matchesPostFilters(row: PostRowData, filters: PostFilterQuery): 
 const PostsView: React.FC = () => {
   const { rows: posts, configs } = useLoaderData<PostsLoaderData>();
   const revalidator = useRevalidator();
-  const [tab, setTab] = useState<PostTab>('view-only');
+  const [tab, setTab] = useState<PostTab>('with-responses');
   const [filters, setFilters] = useState<PostFilters>(DEFAULT_POST_FILTERS);
   const [searchQuery, setSearchQuery] = useState('');
   // `duplicate_announcement_form_post` gates the Duplicate row action in
@@ -284,8 +284,8 @@ const PostsView: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 px-6">
           <Tabs value={tab} onValueChange={(v) => setTab(v as PostTab)}>
             <TabsList>
-              <TabsTrigger value="view-only">Posts</TabsTrigger>
-              <TabsTrigger value="with-responses">Posts with responses</TabsTrigger>
+              <TabsTrigger value="view-only">View only</TabsTrigger>
+              <TabsTrigger value="with-responses">With responses</TabsTrigger>
             </TabsList>
           </Tabs>
 
