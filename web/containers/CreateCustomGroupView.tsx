@@ -1,7 +1,8 @@
 import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
+import type { PGApiSchoolStudent } from '~/api/types';
 import {
   Button,
   DropdownMenu,
@@ -13,8 +14,18 @@ import {
 
 const TITLE_MAX = 120;
 
+interface IncomingNavState {
+  addedStudents?: PGApiSchoolStudent[];
+}
+
 const CreateCustomGroupView: React.FC = () => {
   const [title, setTitle] = useState('');
+  const location = useLocation();
+  const navState = (location.state as IncomingNavState | null) ?? {};
+  const [students] = useState<PGApiSchoolStudent[]>(navState.addedStudents ?? []);
+
+  const studentCount = students.length;
+  const canSave = title.trim().length > 0 && studentCount > 0;
 
   return (
     <div className="flex justify-center px-6 py-6">
@@ -38,7 +49,9 @@ const CreateCustomGroupView: React.FC = () => {
 
           <div className="mt-6">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">0 students added.</p>
+              <p className="text-sm font-medium">
+                {studentCount} student{studentCount === 1 ? '' : 's'} added.
+              </p>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
@@ -47,14 +60,32 @@ const CreateCustomGroupView: React.FC = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem disabled>Add manually</DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/groups/customGroups/new/addStudents"
+                      state={{ alreadyAdded: students.map((s) => s.studentId) }}
+                    >
+                      Add manually
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem disabled>Upload via Excel</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="mt-2 rounded-md bg-muted p-6 text-center text-sm text-muted-foreground">
-              No students added yet.
-            </div>
+            {studentCount === 0 ? (
+              <div className="mt-2 rounded-md bg-muted p-6 text-center text-sm text-muted-foreground">
+                No students added yet.
+              </div>
+            ) : (
+              <ul className="mt-2 divide-y rounded-md border">
+                {students.map((s) => (
+                  <li key={s.studentId} className="flex items-center justify-between p-3 text-sm">
+                    <span>{s.studentName}</span>
+                    <span className="text-xs text-muted-foreground">{s.className}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="mt-8 flex items-center justify-end gap-3">
@@ -64,7 +95,10 @@ const CreateCustomGroupView: React.FC = () => {
             >
               Cancel
             </Link>
-            <Button disabled title="Add at least one student to create the group">
+            <Button
+              disabled={!canSave}
+              title={canSave ? undefined : 'Add at least one student to create the group'}
+            >
               Create Now
             </Button>
           </div>

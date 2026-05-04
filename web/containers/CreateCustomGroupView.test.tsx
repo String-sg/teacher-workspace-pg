@@ -42,16 +42,50 @@ describe('CreateCustomGroupView', () => {
     expect(screen.getByText(/no students added yet/i)).toBeInTheDocument();
   });
 
-  it('shows an "+ Add Students" dropdown with two disabled items', async () => {
+  it('shows an "+ Add Students" dropdown with "Add manually" enabled (links to subpage) and "Upload via Excel" disabled', async () => {
     renderView();
-    // `DropdownMenuTrigger asChild` wraps the inner Button, producing two
-    // matching elements; the first is the actual trigger.
     const triggers = screen.getAllByRole('button', { name: /add students/i });
     fireEvent.click(triggers[0]);
     const manual = await screen.findByRole('menuitem', { name: /add manually/i });
     const excel = await screen.findByRole('menuitem', { name: /upload via excel/i });
-    expect(manual).toHaveAttribute('aria-disabled', 'true');
+    expect(manual).not.toHaveAttribute('aria-disabled', 'true');
     expect(excel).toHaveAttribute('aria-disabled', 'true');
+    // The menuitem renders a Link — assert it points at the subpage.
+    expect(manual.querySelector('a')).toHaveAttribute(
+      'href',
+      '/groups/customGroups/new/addStudents',
+    );
+  });
+
+  it('reads addedStudents from router state and renders counter + names', async () => {
+    const router = createMemoryRouter(
+      [{ path: '/groups/customGroups/new', Component: CreateCustomGroupView }],
+      {
+        initialEntries: [
+          {
+            pathname: '/groups/customGroups/new',
+            state: {
+              addedStudents: [
+                {
+                  studentId: 1,
+                  studentName: 'ALDDIN ANG',
+                  uinFinNo: 'S9000003A',
+                  classSerialNo: '15',
+                  classCode: 'H6-05',
+                  className: 'H6 KINDNESS',
+                  levelCode: 'H6',
+                  levelDescription: 'HIGHER 6',
+                  cca: [],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    );
+    render(<RouterProvider router={router} />);
+    expect(await screen.findByText(/1 student added/i)).toBeInTheDocument();
+    expect(screen.getByText('ALDDIN ANG')).toBeInTheDocument();
   });
 
   it('shows a Cancel link that navigates back to /groups', async () => {
