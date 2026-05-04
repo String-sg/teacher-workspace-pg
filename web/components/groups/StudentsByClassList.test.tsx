@@ -29,10 +29,12 @@ describe('StudentsByClassList', () => {
     expect(screen.getByText(/P1 KINDNESS \(1\)/)).toBeInTheDocument();
   });
 
-  it('renders student name + UIN under each class', () => {
+  it('renders student name, UIN, index, and CCA in each row', () => {
     render(<StudentsByClassList students={[xiaoming]} />);
     expect(screen.getByText('TAN XIAO MING')).toBeInTheDocument();
-    expect(screen.getByText('S9000001A')).toBeInTheDocument();
+    expect(screen.getByText(/S9000001A/)).toBeInTheDocument();
+    expect(screen.getByText(/Index 15/)).toBeInTheDocument();
+    expect(screen.getByText('BOXING')).toBeInTheDocument();
   });
 
   it('renders empty-state copy when there are no students', () => {

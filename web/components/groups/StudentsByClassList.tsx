@@ -32,19 +32,31 @@ export const StudentsByClassList: React.FC<StudentsByClassListProps> = ({ studen
           <header className="border-b px-4 py-2 text-sm font-semibold">
             {className} ({rows.length})
           </header>
-          <ul className="divide-y">
-            {rows.map((s) => (
-              <li key={s.studentId} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <div className="font-medium">{s.studentName}</div>
-                  {s.uinFinNo ? (
-                    <div className="text-xs text-muted-foreground">{s.uinFinNo}</div>
-                  ) : null}
-                </div>
-                <div className="text-xs text-muted-foreground">—</div>
-              </li>
-            ))}
-          </ul>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="px-4 py-2 font-medium">Student / Index</th>
+                <th className="px-4 py-2 font-medium">CCA(s)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.map((s) => (
+                <tr key={s.studentId}>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{s.studentName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {[s.uinFinNo, s.indexNumber != null ? `Index ${s.indexNumber}` : null]
+                        .filter(Boolean)
+                        .join(' | ')}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {s.ccas && s.ccas.length > 0 ? s.ccas.join(', ') : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       ))}
     </div>
