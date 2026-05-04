@@ -45,7 +45,15 @@ const classRoster: PGApiSchoolClass[] = [
 function renderWithData(
   studentsList: PGApiSchoolStudent[] = studentRoster,
   classes: PGApiSchoolClass[] = classRoster,
+  opts?: { alreadyAdded?: number[] },
 ) {
+  const entry = opts?.alreadyAdded
+    ? {
+        pathname: '/groups/customGroups/new/addStudents',
+        state: { alreadyAdded: opts.alreadyAdded },
+      }
+    : '/groups/customGroups/new/addStudents';
+
   const router = createMemoryRouter(
     [
       {
@@ -55,7 +63,7 @@ function renderWithData(
       },
       { path: '/groups/customGroups/new', element: <div>create page</div> },
     ],
-    { initialEntries: ['/groups/customGroups/new/addStudents'] },
+    { initialEntries: [entry] },
   );
   return render(<RouterProvider router={router} />);
 }
@@ -107,5 +115,13 @@ describe('AddStudentsView', () => {
   it('Add N selected button is disabled when nothing is selected', async () => {
     renderWithData();
     expect(await screen.findByRole('button', { name: /add 0 selected/i })).toBeDisabled();
+  });
+
+  it('pre-selects students passed via alreadyAdded state', async () => {
+    renderWithData(studentRoster, classRoster, { alreadyAdded: [1] });
+    const cb = await screen.findByRole('checkbox', { name: /select alddin ang/i });
+    expect(cb).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /select bernice lim/i })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: /add 1 selected/i })).toBeEnabled();
   });
 });

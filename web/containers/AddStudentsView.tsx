@@ -33,9 +33,7 @@ const AddStudentsView: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const incoming = (location.state as IncomingNavState | null) ?? {};
-  const alreadyAdded = useMemo(() => new Set(incoming.alreadyAdded ?? []), [incoming.alreadyAdded]);
-
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set(incoming.alreadyAdded ?? []));
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState('');
   const [classId, setClassId] = useState('');
@@ -58,7 +56,6 @@ const AddStudentsView: React.FC = () => {
     const q = query.toLowerCase();
     const selectedClass = data.classes.find((c) => c.value.toString() === classId);
     return data.students.filter((s) => {
-      if (alreadyAdded.has(s.studentId)) return false;
       if (level && s.levelDescription !== level) return false;
       if (selectedClass && s.className !== selectedClass.labelDescription) return false;
       if (q) {
@@ -67,7 +64,7 @@ const AddStudentsView: React.FC = () => {
       }
       return true;
     });
-  }, [data.students, data.classes, alreadyAdded, level, classId, query]);
+  }, [data.students, data.classes, level, classId, query]);
 
   const visibleRows = filtered.slice(0, PAGE_CAP);
 
