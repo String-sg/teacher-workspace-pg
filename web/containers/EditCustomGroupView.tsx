@@ -61,7 +61,11 @@ const EditCustomGroupView: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const studentCount = students.length;
-  const dirty = title.trim() !== detail.name || navState.addedStudents !== undefined;
+  const originalIds = detail.students.map((s) => s.studentId).sort((a, b) => a - b);
+  const currentIds = students.map((s) => s.studentId).sort((a, b) => a - b);
+  const studentsChanged =
+    originalIds.length !== currentIds.length || originalIds.some((id, i) => id !== currentIds[i]);
+  const dirty = title.trim() !== detail.name || studentsChanged;
   const canSave = title.trim().length > 0 && studentCount > 0 && dirty;
 
   async function handleSave() {
