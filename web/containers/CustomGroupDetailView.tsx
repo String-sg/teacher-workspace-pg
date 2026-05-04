@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import React, { useState } from 'react';
 import { Link, useLoaderData, useRevalidator } from 'react-router';
 
@@ -33,9 +34,21 @@ const CustomGroupDetailView: React.FC = () => {
   return (
     <div className="flex justify-center px-6 py-6">
       <div className="w-full max-w-4xl">
-        <header>
-          <p className="text-xs tracking-wide text-muted-foreground uppercase">Custom Group</p>
-          <h1 className="mt-1 text-2xl font-semibold">{data.name}</h1>
+        <header className="flex items-start gap-3">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            render={<Link to="/groups" />}
+            nativeButton={false}
+            aria-label="Back to Groups"
+            className="mt-1"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <p className="text-xs tracking-wide text-muted-foreground uppercase">Custom Group</p>
+            <h1 className="mt-1 text-2xl font-semibold">{data.name}</h1>
+          </div>
         </header>
 
         <Tabs defaultValue="students" className="mt-6">
