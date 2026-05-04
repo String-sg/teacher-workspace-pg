@@ -391,13 +391,15 @@ export interface PGApiGroupsAssignedClass {
   level: string;
   year: number;
   role: string;
-  studentCount: number;
+  /** Real PGW omits this; only the mock fixture currently populates it. */
+  studentCount?: number;
 }
 
 export interface PGApiGroupsAssignedCcaGroup {
   ccaId: number;
   ccaDescription: string;
-  studentCount: number;
+  /** Real PGW omits this; only the mock fixture currently populates it. */
+  studentCount?: number;
 }
 
 export interface PGApiGroupsAssigned {

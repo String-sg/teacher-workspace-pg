@@ -763,8 +763,40 @@ export function fetchGroupsAssigned() {
   return fetchApi<PGApiGroupsAssigned>('/groups/assigned');
 }
 
-export function fetchCustomGroups() {
-  return fetchApi<PGApiCustomGroupsList>('/groups/custom');
+/**
+ * Real PGW returns `body` as a bare array of groups in a different field
+ * vocabulary than our internal type (`id` not `customGroupId`, `groupName`
+ * not `name`, no `studentCount` — derived from `studentsList`, `createdBy`
+ * is a staff name string, etc.). The BFF mock fixture mirrors this raw
+ * shape so both proxy and mock modes flow through the same mapper.
+ */
+interface PgwRawCustomGroup {
+  id: number;
+  groupName: string;
+  createdBy: string;
+  createdAt: string;
+  owners?: { staffId: number; staffName: string }[];
+  studentsList?: unknown[];
+}
+
+function mapPgwCustomGroup(raw: PgwRawCustomGroup): PGApiCustomGroupSummary {
+  return {
+    customGroupId: raw.id,
+    name: raw.groupName,
+    studentCount: raw.studentsList?.length ?? 0,
+    // Real PGW returns only the creator's display name in this list
+    // payload — no numeric staffId. Surface 0 as a sentinel so callers
+    // can detect "unknown" if they need ownership checks.
+    createdBy: raw.owners?.[0]?.staffId ?? 0,
+    createdByName: raw.createdBy,
+    isShared: (raw.owners?.length ?? 0) > 1,
+    createdAt: raw.createdAt,
+  };
+}
+
+export async function fetchCustomGroups(): Promise<PGApiCustomGroupsList> {
+  const raw = await fetchApi<PgwRawCustomGroup[]>('/groups/custom');
+  return { customGroups: raw.map(mapPgwCustomGroup) };
 }
 
 export function fetchClassDetail(classId: number) {
