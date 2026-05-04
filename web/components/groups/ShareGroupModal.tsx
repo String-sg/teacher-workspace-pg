@@ -29,6 +29,31 @@ export const ShareGroupModal: React.FC<ShareGroupModalProps> = ({
   excludeStaffIds,
   onShare,
 }) => {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
+      {open && (
+        <ShareGroupModalContent
+          staff={staff}
+          excludeStaffIds={excludeStaffIds}
+          onShare={onShare}
+          onClose={onClose}
+        />
+      )}
+    </Dialog>
+  );
+};
+
+const ShareGroupModalContent: React.FC<{
+  staff: PGApiSchoolStaff[];
+  excludeStaffIds: number[];
+  onShare: (staffIds: number[]) => Promise<void>;
+  onClose: () => void;
+}> = ({ staff, excludeStaffIds, onShare, onClose }) => {
   const [selected, setSelected] = useState<SelectedStaff[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,37 +78,30 @@ export const ShareGroupModal: React.FC<ShareGroupModalProps> = ({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) onClose();
-      }}
-    >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Share group</DialogTitle>
-          <DialogDescription>
-            By sharing this group, other staff members will have access to:
-          </DialogDescription>
-        </DialogHeader>
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Share group</DialogTitle>
+        <DialogDescription>
+          By sharing this group, other staff members will have access to:
+        </DialogDescription>
+      </DialogHeader>
 
-        <ul className="list-disc space-y-1 pl-5 text-sm">
-          <li>View and send to the group</li>
-          <li>Edit the group name</li>
-          <li>Add or delete students</li>
-          <li>Share the group with other staff</li>
-        </ul>
+      <ul className="list-disc space-y-1 pl-5 text-sm">
+        <li>View and send to the group</li>
+        <li>Edit the group name</li>
+        <li>Add or delete students</li>
+        <li>Share the group with other staff</li>
+      </ul>
 
-        <div>
-          <StaffSelector value={selected} onChange={setSelected} staff={filteredStaff} />
-        </div>
+      <div>
+        <StaffSelector value={selected} onChange={setSelected} staff={filteredStaff} />
+      </div>
 
-        <DialogFooter>
-          <Button disabled={selected.length === 0 || submitting} onClick={handleShare}>
-            {submitting ? 'Sharing…' : 'Share group'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button disabled={selected.length === 0 || submitting} onClick={handleShare}>
+          {submitting ? 'Sharing…' : 'Share group'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 };
