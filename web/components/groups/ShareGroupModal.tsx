@@ -99,8 +99,9 @@ const ShareGroupModalContent: React.FC<{
     try {
       await onShare(newStaffIds);
       onClose();
-    } catch {
-      notify.error('Could not share the group. Please try again.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not share the group.';
+      notify.error(msg);
     } finally {
       setSubmitting(false);
     }
