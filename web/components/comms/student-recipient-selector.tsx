@@ -41,10 +41,22 @@ export function StudentRecipientSelector({
   customGroups,
 }: StudentRecipientSelectorProps) {
   const byClassName = new Map<string, PGApiSchoolStudent[]>();
+  const byLevel = new Map<string, PGApiSchoolStudent[]>();
+  const byCca = new Map<string, PGApiSchoolStudent[]>();
   for (const s of students) {
-    const list = byClassName.get(s.className) ?? [];
-    list.push(s);
-    byClassName.set(s.className, list);
+    const cls = byClassName.get(s.className) ?? [];
+    cls.push(s);
+    byClassName.set(s.className, cls);
+
+    const lvl = byLevel.get(s.levelDescription) ?? [];
+    lvl.push(s);
+    byLevel.set(s.levelDescription, lvl);
+
+    for (const ccaName of s.cca) {
+      const ccaList = byCca.get(ccaName) ?? [];
+      ccaList.push(s);
+      byCca.set(ccaName, ccaList);
+    }
   }
 
   const classItems: EntityItem[] = classes.map((c) => {
@@ -56,6 +68,7 @@ export function StudentRecipientSelector({
       count: roster.length,
       memberNames: roster.map((s) => s.studentName),
       memberDetails: roster.map((s) => ({
+        id: s.studentId.toString(),
         name: s.studentName,
         sublabel: s.uinFinNo,
       })),
@@ -70,31 +83,49 @@ export function StudentRecipientSelector({
   // /levels endpoint this block collapses to a direct map.
   const levelItems: EntityItem[] = (() => {
     if (!groupsAssigned?.classes.length) return [];
-    const byLevel = new Map<string, { count: number; firstClassId: number }>();
+    const levelMeta = new Map<string, { count: number; firstClassId: number }>();
     for (const c of groupsAssigned.classes) {
-      const existing = byLevel.get(c.level);
+      const existing = levelMeta.get(c.level);
       if (existing) existing.count += c.studentCount;
-      else byLevel.set(c.level, { count: c.studentCount, firstClassId: c.classId });
+      else levelMeta.set(c.level, { count: c.studentCount, firstClassId: c.classId });
     }
-    return Array.from(byLevel.entries()).map(([level, meta]) => ({
-      // Level ID = the first class ID that maps to this level. Stable per
-      // dataset + uniquely identifies the level in the outbound `levelIds`.
-      id: meta.firstClassId.toString(),
-      label: level,
-      type: 'group' as const,
-      count: meta.count,
-      groupType: 'level' as const,
-    }));
+    return Array.from(levelMeta.entries()).map(([level, meta]) => {
+      const roster = byLevel.get(level) ?? [];
+      return {
+        id: meta.firstClassId.toString(),
+        label: level,
+        type: 'group' as const,
+        count: meta.count,
+        groupType: 'level' as const,
+        memberNames: roster.map((s) => s.studentName),
+        memberDetails: roster.map((s) => ({
+          id: s.studentId.toString(),
+          name: s.studentName,
+          tag: s.className,
+          sublabel: s.uinFinNo,
+        })),
+      };
+    });
   })();
 
   const ccaItems: EntityItem[] =
-    groupsAssigned?.ccaGroups.map((g) => ({
-      id: g.ccaId.toString(),
-      label: g.ccaDescription,
-      type: 'group',
-      count: g.studentCount,
-      groupType: 'cca',
-    })) ?? [];
+    groupsAssigned?.ccaGroups.map((g) => {
+      const roster = byCca.get(g.ccaDescription) ?? [];
+      return {
+        id: g.ccaId.toString(),
+        label: g.ccaDescription,
+        type: 'group' as const,
+        count: g.studentCount,
+        groupType: 'cca' as const,
+        memberNames: roster.map((s) => s.studentName),
+        memberDetails: roster.map((s) => ({
+          id: s.studentId.toString(),
+          name: s.studentName,
+          tag: s.className,
+          sublabel: s.uinFinNo,
+        })),
+      };
+    }) ?? [];
 
   const customGroupItems: EntityItem[] =
     customGroups?.map((g) => ({

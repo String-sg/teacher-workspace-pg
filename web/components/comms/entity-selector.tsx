@@ -1,7 +1,9 @@
 import { Check, ChevronDown, Minus, Plus, Search, User, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 
+import { Badge } from '~/components/ui/badge';
 import { Sheet, SheetContent } from '~/components/ui/sheet';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { cn } from '~/lib/utils';
@@ -21,7 +23,9 @@ export type GroupType =
   | 'staff-group';
 
 export interface MemberDetail {
+  id?: string; // entity ID for individual selection
   name: string;
+  tag?: string; // inline badge next to name (e.g. class label when group is not a class)
   sublabel?: string; // e.g. "3A · tanml@school.edu.sg" for staff
   badge?: string; // right-aligned label (e.g. NRIC for students)
 }
@@ -46,6 +50,7 @@ export interface SelectedEntity {
   groupType?: GroupType;
   memberNames?: string[];
   excludedMemberNames?: string[];
+  role?: 'viewer' | 'editor';
 }
 
 export interface ScopeSection {
@@ -78,6 +83,7 @@ export interface EntitySelectorProps {
   noResultsText?: string;
   emptyTabText?: string;
   maxScrollHeight?: string;
+  showRole?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,9 +199,10 @@ interface ResultRowProps {
   onToggle: () => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
-  selectedIndividualNames?: Set<string>;
+  selectedIndividualIds?: Set<string>;
   excludedMemberNames?: Set<string>;
   onMemberToggle?: (name: string) => void;
+  onIndividualSelect?: (id: string, label: string) => void;
 }
 
 function ResultRow({
@@ -204,9 +211,10 @@ function ResultRow({
   onToggle,
   isExpanded = false,
   onToggleExpand,
-  selectedIndividualNames: _selectedIndividualNames = new Set<string>(),
+  selectedIndividualIds = new Set<string>(),
   excludedMemberNames = new Set(),
   onMemberToggle,
+  onIndividualSelect,
 }: ResultRowProps) {
   const hasMembers =
     item.type === 'group' &&
@@ -247,7 +255,9 @@ function ResultRow({
           </div>
           {item.type === 'group' && item.count !== undefined && (
             <span className="shrink-0 text-xs text-muted-foreground">
-              {item.count - excludedMemberNames.size}{' '}
+              {excludedMemberNames.size > 0
+                ? `${item.count - excludedMemberNames.size} / ${item.count}`
+                : item.count}{' '}
               {getCountUnit(item.groupType, item.count - excludedMemberNames.size)}
             </span>
           )}
@@ -281,38 +291,31 @@ function ResultRow({
       {/* Expanded member list */}
       {isExpanded && hasMembers && (
         <div className="border-b border-slate-3 bg-slate-2/60 px-4 pt-2.5 pb-3">
-          {/* Header: member count */}
-          {(() => {
-            const total = item.memberDetails?.length ?? item.memberNames!.length;
-            const included = total - excludedMemberNames.size;
-            return (
-              <p className="mb-2 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                {isSelected
-                  ? `${included} of ${total} included`
-                  : `${total} ${getCountUnit(item.groupType, total)}`}
-              </p>
-            );
-          })()}
-
-          {/* Scrollable numbered list */}
-          <div className="max-h-[200px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          {/* Full member list */}
+          <div style={{ scrollbarWidth: 'thin' }}>
             {(item.memberDetails ?? item.memberNames!.map((name): MemberDetail => ({ name }))).map(
               (detail, index) => {
-                const isMemberIncluded = isSelected && !excludedMemberNames.has(detail.name);
+                const isMemberIncluded = isSelected
+                  ? !excludedMemberNames.has(detail.name)
+                  : Boolean(detail.id && selectedIndividualIds.has(detail.id));
+                const isInteractive = isSelected || Boolean(detail.id && onIndividualSelect);
                 return (
                   <button
                     key={detail.name}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => isSelected && onMemberToggle?.(detail.name)}
+                    onClick={() => {
+                      if (isSelected) {
+                        onMemberToggle?.(detail.name);
+                      } else if (detail.id) {
+                        onIndividualSelect?.(detail.id, detail.name);
+                      }
+                    }}
                     className={cn(
                       'flex w-full items-center gap-2 rounded px-1.5 py-1 text-xs',
-                      isSelected ? 'cursor-pointer hover:bg-muted' : 'cursor-default',
+                      isInteractive ? 'cursor-pointer hover:bg-muted' : 'cursor-default',
                     )}
                   >
-                    <span className="w-5 shrink-0 text-right text-[10px] text-slate-9 tabular-nums">
-                      #{index + 1}
-                    </span>
                     <span
                       className={cn(
                         'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors',
@@ -323,21 +326,29 @@ function ResultRow({
                     >
                       {isMemberIncluded && <Check className="h-3 w-3" />}
                     </span>
-                    <span className="min-w-0 flex-1 text-left">
+                    <span className="w-5 shrink-0 text-right text-[10px] text-slate-9 tabular-nums">
+                      #{index + 1}
+                    </span>
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
                       <span
                         className={cn(
-                          'font-medium',
+                          'truncate font-medium',
                           isMemberIncluded ? 'text-foreground' : 'text-slate-9',
                         )}
                       >
                         {detail.name}
                       </span>
-                      {detail.sublabel && (
-                        <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-                          {detail.sublabel}
-                        </span>
+                      {detail.tag && (
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">
+                          {detail.tag}
+                        </Badge>
                       )}
                     </span>
+                    {detail.sublabel && (
+                      <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                        {detail.sublabel}
+                      </span>
+                    )}
                     {detail.badge && (
                       <span className="shrink-0 font-mono text-[10px] text-slate-9">
                         {detail.badge}
@@ -348,27 +359,21 @@ function ResultRow({
               },
             )}
           </div>
-
-          {/* Note when roster is incomplete (data not available in preview) */}
-          {(() => {
-            const shown = item.memberDetails?.length ?? item.memberNames!.length;
-            return (
-              item.count !== undefined &&
-              item.count > shown && (
-                <p className="mt-2 text-[10px] text-muted-foreground">
-                  Full roster not available in this preview (+
-                  {item.count - shown} more)
-                </p>
-              )
-            );
-          })()}
         </div>
       )}
     </>
   );
 }
 
-function EntityChip({ entity, onRemove }: { entity: SelectedEntity; onRemove: () => void }) {
+function EntityChip({
+  entity,
+  onRemove,
+  onRoleChange,
+}: {
+  entity: SelectedEntity;
+  onRemove: () => void;
+  onRoleChange?: (role: 'viewer' | 'editor') => void;
+}) {
   const names = entity.memberNames ?? [];
   const tooltipTitle =
     names.length > 0
@@ -380,23 +385,38 @@ function EntityChip({ entity, onRemove }: { entity: SelectedEntity; onRemove: ()
   return (
     <span
       title={tooltipTitle}
-      className="inline-flex max-w-[180px] shrink-0 items-center gap-1 rounded-md bg-twblue-2 px-2 py-0.5 text-xs font-medium text-primary"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-background px-2.5 py-1 text-sm text-foreground"
     >
       {entity.type === 'group' ? (
-        <Users className="h-3 w-3 shrink-0" />
+        <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       ) : (
-        <User className="h-3 w-3 shrink-0" />
+        <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       )}
-      <span className="truncate">{entity.label}</span>
-      {entity.type === 'group' && <span className="shrink-0 opacity-60">· {entity.count}</span>}
+      <span className="max-w-[160px] truncate">{entity.label}</span>
+      {entity.type === 'group' && (
+        <span className="shrink-0 text-muted-foreground">
+          · {entity.count - (entity.excludedMemberNames?.length ?? 0)}
+        </span>
+      )}
+      {onRoleChange && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onRoleChange(entity.role === 'editor' ? 'viewer' : 'editor')}
+          className="flex shrink-0 items-center gap-0.5 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-xs text-foreground hover:bg-muted"
+        >
+          {entity.role === 'editor' ? 'Editor' : 'Viewer'}
+          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+        </button>
+      )}
       <button
         type="button"
         aria-label={`Remove ${entity.label}`}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onRemove}
-        className="ml-0.5 shrink-0 rounded-full p-0.5 hover:bg-twblue-4 hover:text-primary"
+        className="ml-0.5 shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
       >
-        <X className="h-2.5 w-2.5" />
+        <X className="h-3 w-3" />
       </button>
     </span>
   );
@@ -417,6 +437,7 @@ export function EntitySelector({
   noResultsText = 'No results found',
   emptyTabText = 'No items in this category',
   maxScrollHeight = '240px',
+  showRole = false,
 }: EntitySelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -425,12 +446,37 @@ export function EntitySelector({
   const [groupExclusions, setGroupExclusions] = useState<Map<string, Set<string>>>(new Map());
 
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const portalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const [dropdownRect, setDropdownRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
-  // Derived: names of individually-selected entities (for member expansion highlights)
-  const selectedIndividualNames = useMemo(
-    () => new Set(value.filter((e) => e.type === 'individual').map((e) => e.label)),
+  useEffect(() => {
+    if (!isOpen || isMobile) {
+      setDropdownRect(null);
+      return;
+    }
+    function recalc() {
+      if (!wrapperRef.current) return;
+      const r = wrapperRef.current.getBoundingClientRect();
+      setDropdownRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    recalc();
+    window.addEventListener('scroll', recalc, true);
+    window.addEventListener('resize', recalc);
+    return () => {
+      window.removeEventListener('scroll', recalc, true);
+      window.removeEventListener('resize', recalc);
+    };
+  }, [isOpen, isMobile]);
+
+  // Derived: IDs of individually-selected entities (for member expansion highlights)
+  const selectedIndividualIds = useMemo(
+    () => new Set(value.filter((e) => e.type === 'individual').map((e) => e.id)),
     [value],
   );
 
@@ -446,10 +492,14 @@ export function EntitySelector({
   }, [query]);
 
   // Outside-click to close (desktop only — Sheet handles its own dismissal)
+  // Must also check the portal div since it lives outside wrapperRef in the DOM.
   useEffect(() => {
     if (isMobile) return;
     function handleMouseDown(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inWrapper = wrapperRef.current?.contains(target) ?? false;
+      const inPortal = portalRef.current?.contains(target) ?? false;
+      if (!inWrapper && !inPortal) {
         setIsOpen(false);
         setQuery('');
       }
@@ -476,24 +526,40 @@ export function EntitySelector({
     }
   }
 
-  function handleMemberToggle(groupId: string, memberName: string) {
+  function handleMemberToggle(groupId: string, memberName: string, totalMembers: number) {
     const currentExcl = groupExclusions.get(groupId) ?? new Set<string>();
     const newExcl = new Set(currentExcl);
     if (newExcl.has(memberName)) newExcl.delete(memberName);
     else newExcl.add(memberName);
+
+    // Deselect the whole group if all members would be excluded
+    if (newExcl.size >= totalMembers) {
+      onChange(value.filter((e) => e.id !== groupId));
+      const next = new Map(groupExclusions);
+      next.delete(groupId);
+      setGroupExclusions(next);
+      return;
+    }
+
     const next = new Map(groupExclusions);
     if (newExcl.size === 0) next.delete(groupId);
     else next.set(groupId, newExcl);
     setGroupExclusions(next);
     const updatedValue = value.map((e) =>
       e.id === groupId
-        ? {
-            ...e,
-            excludedMemberNames: newExcl.size > 0 ? [...newExcl] : undefined,
-          }
+        ? { ...e, excludedMemberNames: newExcl.size > 0 ? [...newExcl] : undefined }
         : e,
     );
     onChange(updatedValue);
+  }
+
+  function handleIndividualFromMember(memberId: string, memberLabel: string) {
+    const already = value.some((e) => e.id === memberId && e.type === 'individual');
+    if (already) {
+      onChange(value.filter((e) => !(e.id === memberId && e.type === 'individual')));
+    } else {
+      onChange([...value, { id: memberId, label: memberLabel, type: 'individual', count: 1 }]);
+    }
   }
 
   function handleRemove(entity: SelectedEntity) {
@@ -533,9 +599,16 @@ export function EntitySelector({
           onToggle={() => handleToggle(item)}
           isExpanded={expandedGroupId === item.id}
           onToggleExpand={() => setExpandedGroupId((prev) => (prev === item.id ? null : item.id))}
-          selectedIndividualNames={selectedIndividualNames}
+          selectedIndividualIds={selectedIndividualIds}
           excludedMemberNames={groupExclusions.get(item.id)}
-          onMemberToggle={(name) => handleMemberToggle(item.id, name)}
+          onMemberToggle={(name) =>
+            handleMemberToggle(
+              item.id,
+              name,
+              item.memberDetails?.length ?? item.memberNames?.length ?? 0,
+            )
+          }
+          onIndividualSelect={handleIndividualFromMember}
         />
       ));
 
@@ -592,9 +665,16 @@ export function EntitySelector({
                 onToggleExpand={() =>
                   setExpandedGroupId((prev) => (prev === item.id ? null : item.id))
                 }
-                selectedIndividualNames={selectedIndividualNames}
+                selectedIndividualIds={selectedIndividualIds}
                 excludedMemberNames={groupExclusions.get(item.id)}
-                onMemberToggle={(name) => handleMemberToggle(item.id, name)}
+                onMemberToggle={(name) =>
+                  handleMemberToggle(
+                    item.id,
+                    name,
+                    item.memberDetails?.length ?? item.memberNames?.length ?? 0,
+                  )
+                }
+                onIndividualSelect={handleIndividualFromMember}
               />
             ))}
           </>
@@ -613,9 +693,16 @@ export function EntitySelector({
                 onToggleExpand={() =>
                   setExpandedGroupId((prev) => (prev === item.id ? null : item.id))
                 }
-                selectedIndividualNames={selectedIndividualNames}
+                selectedIndividualIds={selectedIndividualIds}
                 excludedMemberNames={groupExclusions.get(item.id)}
-                onMemberToggle={(name) => handleMemberToggle(item.id, name)}
+                onMemberToggle={(name) =>
+                  handleMemberToggle(
+                    item.id,
+                    name,
+                    item.memberDetails?.length ?? item.memberNames?.length ?? 0,
+                  )
+                }
+                onIndividualSelect={handleIndividualFromMember}
               />
             ))}
           </>
@@ -670,9 +757,8 @@ export function EntitySelector({
     </>
   );
 
-  // Token input container — replaces the old single-line trigger button.
-  // Selected chips are always visible here; desktop search input lives here too.
-  const tokenContainer = (
+  // Search input — clean standalone field, no chips inside.
+  const searchInput = (
     <div
       role="combobox"
       aria-expanded={isOpen}
@@ -685,23 +771,18 @@ export function EntitySelector({
         }
       }}
       className={cn(
-        'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-[14px] border border-input bg-background px-2.5 py-1.5 transition-colors',
+        'flex min-h-9 w-full items-center rounded-[14px] border border-input bg-background px-2.5 py-1.5 transition-colors',
         'cursor-text hover:border-ring',
         isOpen && 'border-ring ring-[3px] ring-ring/50',
       )}
     >
-      {/* Selected chips */}
-      {value.map((entity) => (
-        <EntityChip key={entity.id} entity={entity} onRemove={() => handleRemove(entity)} />
-      ))}
-
-      {/* Desktop: inline search input (always present, flex-1 expands to fill row) */}
+      {/* Desktop: inline search input */}
       {!isMobile && (
         <input
           ref={inputRef}
           type="text"
           value={query}
-          placeholder={value.length === 0 ? placeholder : undefined}
+          placeholder={placeholder}
           onChange={(e) => {
             setQuery(e.target.value);
             if (!isOpen) setIsOpen(true);
@@ -712,7 +793,6 @@ export function EntitySelector({
               if (query) setQuery('');
               else closePanel();
             }
-            // Backspace on empty input removes the last chip
             if (e.key === 'Backspace' && !query && value.length > 0) {
               handleRemove(value[value.length - 1]);
             }
@@ -721,24 +801,10 @@ export function EntitySelector({
         />
       )}
 
-      {/* Clear all — visible when ≥1 chip is selected */}
-      {value.length > 0 && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onChange([])}
-          className="ml-auto shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
-        >
-          Clear all
-        </button>
-      )}
-
-      {/* Mobile: placeholder text + chevron (input is inside the Sheet) */}
+      {/* Mobile: placeholder text + chevron */}
       {isMobile && (
         <>
-          {value.length === 0 && (
-            <span className="flex-1 text-sm text-muted-foreground">{placeholder}</span>
-          )}
+          <span className="flex-1 text-sm text-muted-foreground">{placeholder}</span>
           <ChevronDown
             className={cn(
               'ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform',
@@ -750,16 +816,59 @@ export function EntitySelector({
     </div>
   );
 
+  // Selected chips row — rendered below the search input.
+  const chipRow = value.length > 0 && (
+    <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+      {value.map((entity) => (
+        <EntityChip
+          key={entity.id}
+          entity={entity}
+          onRemove={() => handleRemove(entity)}
+          onRoleChange={
+            showRole
+              ? (role) => {
+                  onChange(value.map((e) => (e.id === entity.id ? { ...e, role } : e)));
+                }
+              : undefined
+          }
+        />
+      ))}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => onChange([])}
+        className="ml-auto shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
+      >
+        Clear all
+      </button>
+    </div>
+  );
+
   return (
     <div ref={wrapperRef} className="relative">
-      {tokenContainer}
+      {searchInput}
+      {chipRow}
 
-      {/* Desktop: inline dropdown panel */}
-      {!isMobile && isOpen && (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border bg-white shadow-md">
-          {panelBody}
-        </div>
-      )}
+      {/* Desktop: portal dropdown panel — renders outside card to escape overflow:hidden */}
+      {!isMobile &&
+        isOpen &&
+        dropdownRect &&
+        createPortal(
+          <div
+            ref={portalRef}
+            style={{
+              position: 'fixed',
+              top: dropdownRect.top,
+              left: dropdownRect.left,
+              width: dropdownRect.width,
+              zIndex: 50,
+            }}
+            className="overflow-hidden rounded-lg border bg-white shadow-md"
+          >
+            {panelBody}
+          </div>,
+          document.body,
+        )}
 
       {/* Mobile: bottom Sheet */}
       {isMobile && (

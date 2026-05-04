@@ -1,4 +1,4 @@
-import type { PGApiSchoolStaff } from '~/api/types';
+import type { PGApiSchoolStaff, PGApiStaffGroups } from '~/api/types';
 
 import { EntitySelector } from './entity-selector';
 import type { EntityItem, EntityScope, SearchResults, SelectedEntity } from './entity-selector';
@@ -9,9 +9,12 @@ interface StaffSelectorProps {
   value: SelectedEntity[];
   onChange: (staff: SelectedEntity[]) => void;
   staff: PGApiSchoolStaff[];
+  staffGroups?: PGApiStaffGroups;
 }
 
-export function StaffSelector({ value, onChange, staff }: StaffSelectorProps) {
+export function StaffSelector({ value, onChange, staff, staffGroups }: StaffSelectorProps) {
+  const byName = new Map(staff.map((s) => [s.name, s]));
+
   const individualItems: EntityItem[] = staff.map((s) => ({
     id: s.staffId.toString(),
     label: s.name,
@@ -20,18 +23,45 @@ export function StaffSelector({ value, onChange, staff }: StaffSelectorProps) {
     count: 1,
   }));
 
-  // Staff-only scopes: PG doesn't currently expose level-team / school-team
-  // membership via the proxied endpoints, so those tabs would always be empty.
-  // Leaving them mounted with `items: []` makes the UI look broken — drop them
-  // entirely until pgw-web surfaces the data. See plan R8: "DO NOT leave them
-  // as empty-item-array populated tabs that look functional but return nothing".
-  const scopes: EntityScope[] = [{ id: 'individual', label: 'Individual', items: individualItems }];
+  const levelItems: EntityItem[] = (staffGroups?.level ?? []).map((g) => ({
+    id: g.id,
+    label: g.label,
+    type: 'group',
+    count: g.count,
+    groupType: 'staff-group',
+    memberNames: g.memberNames,
+    memberDetails: g.memberNames?.map((name) => ({
+      id: byName.get(name)?.staffId.toString(),
+      name,
+    })),
+  }));
+
+  const schoolItems: EntityItem[] = (staffGroups?.school ?? []).map((g) => ({
+    id: g.id,
+    label: g.label,
+    type: 'group',
+    count: g.count,
+    groupType: 'staff-group',
+    memberNames: g.memberNames,
+    memberDetails: g.memberNames?.map((name) => ({
+      id: byName.get(name)?.staffId.toString(),
+      name,
+    })),
+  }));
+
+  const scopes: EntityScope[] = [
+    { id: 'individual', label: 'Individual', items: individualItems },
+    { id: 'level', label: 'Level', items: levelItems },
+    { id: 'school', label: 'School', items: schoolItems },
+  ];
+
+  const allGroups = [...levelItems, ...schoolItems];
 
   function searchFn(query: string): SearchResults {
     const q = query.toLowerCase();
     if (!q) return { groups: [], individuals: individualItems };
     return {
-      groups: [],
+      groups: allGroups.filter((g) => g.label.toLowerCase().includes(q)),
       individuals: individualItems.filter(
         (s) =>
           s.label.toLowerCase().includes(q) || (s.sublabel?.toLowerCase().includes(q) ?? false),
