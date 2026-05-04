@@ -36,7 +36,7 @@ export const StudentResultsTable: React.FC<StudentResultsTableProps> = ({
   const rowIds = rows.map((r) => r.studentId);
 
   return (
-    <div className="max-h-[40rem] overflow-auto rounded-md border">
+    <div className="h-full overflow-auto rounded-md border">
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow>

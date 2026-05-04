@@ -102,8 +102,8 @@ const AddStudentsView: React.FC = () => {
   }
 
   return (
-    <div className="flex justify-center px-6 py-6">
-      <div className="w-full max-w-4xl space-y-6">
+    <div className="flex h-[calc(100svh-3rem)] justify-center px-6 py-6">
+      <div className="flex min-h-0 w-full max-w-4xl flex-col gap-6">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Add students</h1>
           <Link
@@ -130,14 +130,16 @@ const AddStudentsView: React.FC = () => {
           Showing {visibleRows.length} of {filtered.length} matching students.
         </p>
 
-        <StudentResultsTable
-          rows={visibleRows}
-          selectedIds={selectedIds}
-          onToggle={toggle}
-          onToggleAll={toggleAll}
-        />
+        <div className="min-h-0 flex-1">
+          <StudentResultsTable
+            rows={visibleRows}
+            selectedIds={selectedIds}
+            onToggle={toggle}
+            onToggleAll={toggleAll}
+          />
+        </div>
 
-        <footer className="flex items-center justify-end gap-3">
+        <footer className="flex items-center justify-end gap-3 pb-2">
           <Link
             to={parentPath}
             className="text-sm font-medium text-muted-foreground hover:underline"
