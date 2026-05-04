@@ -391,13 +391,15 @@ export interface PGApiGroupsAssignedClass {
   level: string;
   year: number;
   role: string;
-  studentCount: number;
+  /** Real PGW omits this; only the mock fixture currently populates it. */
+  studentCount?: number;
 }
 
 export interface PGApiGroupsAssignedCcaGroup {
   ccaId: number;
   ccaDescription: string;
-  studentCount: number;
+  /** Real PGW omits this; only the mock fixture currently populates it. */
+  studentCount?: number;
 }
 
 export interface PGApiGroupsAssigned {
@@ -417,6 +419,35 @@ export interface PGApiCustomGroupSummary {
 
 export interface PGApiCustomGroupsList {
   customGroups: PGApiCustomGroupSummary[];
+}
+
+export interface PGApiCustomGroupDetailStudent {
+  studentId: number;
+  studentName: string;
+  className: string;
+  indexNumber?: number;
+  uinFinNo?: string;
+  ccas?: string[];
+}
+
+export interface PGApiCustomGroupSharedStaff {
+  staffId: number;
+  staffName: string;
+}
+
+export interface PGApiCustomGroupDetail {
+  customGroupId: number;
+  name: string;
+  createdBy: number;
+  createdByName: string;
+  isShared: boolean;
+  sharedWith: PGApiCustomGroupSharedStaff[];
+  students: PGApiCustomGroupDetailStudent[];
+  createdAt: string;
+}
+
+export interface PGApiCreateCustomGroupResponse {
+  customGroupId: number;
 }
 
 export interface PGApiClassDetail {

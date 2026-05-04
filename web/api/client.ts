@@ -41,8 +41,11 @@ import type {
   PGApiCreateAnnouncementPayload,
   PGApiCreateConsentFormDraftPayload,
   PGApiCreateConsentFormPayload,
+  PGApiCreateCustomGroupResponse,
   PGApiCreateDraftPayload,
+  PGApiCustomGroupDetail,
   PGApiCustomGroupsList,
+  PGApiCustomGroupSummary,
   PGApiDuplicateAnnouncementResponse,
   PGApiDuplicateConsentFormResponse,
   PGApiGroupsAssigned,
@@ -763,8 +766,122 @@ export function fetchGroupsAssigned() {
   return fetchApi<PGApiGroupsAssigned>('/groups/assigned');
 }
 
-export function fetchCustomGroups() {
-  return fetchApi<PGApiCustomGroupsList>('/groups/custom');
+/**
+ * Real PGW returns `body` as a bare array of groups in a different field
+ * vocabulary than our internal type (`id` not `customGroupId`, `groupName`
+ * not `name`, no `studentCount` — derived from `studentsList`, `createdBy`
+ * is a staff name string, etc.). The BFF mock fixture mirrors this raw
+ * shape so both proxy and mock modes flow through the same mapper.
+ */
+interface PgwRawCustomGroup {
+  id: number;
+  groupName: string;
+  createdBy: string;
+  createdAt: string;
+  owners?: { staffId: number; staffName: string }[];
+  studentsList?: unknown[];
+}
+
+function mapPgwCustomGroup(raw: PgwRawCustomGroup): PGApiCustomGroupSummary {
+  return {
+    customGroupId: raw.id,
+    name: raw.groupName,
+    studentCount: raw.studentsList?.length ?? 0,
+    // Real PGW returns only the creator's display name in this list
+    // payload — no numeric staffId. Surface 0 as a sentinel so callers
+    // can detect "unknown" if they need ownership checks.
+    createdBy: raw.owners?.[0]?.staffId ?? 0,
+    createdByName: raw.createdBy,
+    isShared: (raw.owners?.length ?? 0) > 1,
+    createdAt: raw.createdAt,
+  };
+}
+
+export async function fetchCustomGroups(): Promise<PGApiCustomGroupsList> {
+  const raw = await fetchApi<PgwRawCustomGroup[]>('/groups/custom');
+  return { customGroups: raw.map(mapPgwCustomGroup) };
+}
+
+interface PgwRawCustomGroupDetail {
+  id: number;
+  groupName: string;
+  createdBy: string;
+  createdAt: string;
+  owners?: { staffId: number; staffName: string }[];
+  studentsList?: {
+    studentId: number;
+    studentName: string;
+    className: string;
+    indexNumber?: number;
+    uinFinNo?: string;
+    ccas?: string[];
+  }[];
+}
+
+function mapPgwCustomGroupDetail(raw: PgwRawCustomGroupDetail): PGApiCustomGroupDetail {
+  const owners = raw.owners ?? [];
+  const creator = owners[0];
+  return {
+    customGroupId: raw.id,
+    name: raw.groupName,
+    createdBy: creator?.staffId ?? 0,
+    createdByName: raw.createdBy,
+    isShared: owners.length > 1,
+    sharedWith: owners.slice(1),
+    students: (raw.studentsList ?? []).map((s) => ({
+      studentId: s.studentId,
+      studentName: s.studentName,
+      className: s.className,
+      indexNumber: s.indexNumber,
+      uinFinNo: s.uinFinNo,
+      ccas: s.ccas,
+    })),
+    createdAt: raw.createdAt,
+  };
+}
+
+export async function fetchCustomGroupDetail(id: number): Promise<PGApiCustomGroupDetail> {
+  // Real PGW returns `body` as a single-element array even for detail
+  // endpoints (matches the list shape). The mock fixture mirrors this.
+  const raw = await fetchApi<PgwRawCustomGroupDetail | PgwRawCustomGroupDetail[]>(
+    `/groups/custom/${id}`,
+  );
+  const item = Array.isArray(raw) ? raw[0] : raw;
+  if (!item) {
+    throw new Response('Group not found', { status: 404 });
+  }
+  return mapPgwCustomGroupDetail(item);
+}
+
+export async function createCustomGroup(payload: {
+  name: string;
+  studentIds: number[];
+}): Promise<PGApiCreateCustomGroupResponse> {
+  // Real PGW field names diverge from the contract doc:
+  //   - request: `groupName` (not `name`), `selectedSchoolStudents` (not `studentIds`)
+  //   - response: `id` (not `customGroupId`)
+  // Confirmed via -400 responses + smoke testing during PGTW-13c.
+  const raw = await mutateApi<{ id: number; customGroupId?: number }>('POST', '/groups/custom', {
+    groupName: payload.name,
+    selectedSchoolStudents: payload.studentIds,
+  });
+  return { customGroupId: raw.customGroupId ?? raw.id };
+}
+
+export async function updateCustomGroup(
+  id: number,
+  payload: { name: string; studentIds: number[] },
+): Promise<void> {
+  await mutateApi<void>('PUT', `/groups/custom/${id}`, {
+    groupName: payload.name,
+    selectedSchoolStudents: payload.studentIds,
+  });
+}
+
+export async function shareCustomGroup(id: number, staffIds: number[]): Promise<void> {
+  await mutateApi<void>('PUT', `/groups/custom/${id}/share`, {
+    selectedStaff: staffIds,
+  });
 }
 
 export function fetchClassDetail(classId: number) {
