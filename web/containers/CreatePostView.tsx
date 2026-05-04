@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, EyeOff, Plus } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Eye, EyeOff, Plus, Send } from 'lucide-react';
 import { useDeferredValue, useMemo, useReducer, useRef, useState } from 'react';
 import type { LoaderFunctionArgs } from 'react-router';
 import { Link, Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
@@ -12,6 +12,7 @@ import {
   fetchGroupsAssigned,
   fetchSchoolClasses,
   fetchSchoolStaff,
+  fetchSchoolStaffGroups,
   fetchSchoolStudents,
   fetchSession,
   getConfigs,
@@ -32,12 +33,14 @@ import type {
   PGApiSchoolStaff,
   PGApiSchoolStudent,
   PGApiSession,
+  PGApiStaffGroups,
 } from '~/api/types';
 import type { SelectedEntity } from '~/components/comms/entity-selector';
 import { StaffSelector } from '~/components/comms/staff-selector';
 import { StudentRecipientSelector } from '~/components/comms/student-recipient-selector';
 import { AttachmentSection } from '~/components/posts/AttachmentSection';
 import { DueDateSection } from '~/components/posts/DueDateSection';
+import { EnquiryEmailSelector } from '~/components/posts/EnquiryEmailSelector';
 import { EventScheduleSection } from '~/components/posts/EventScheduleSection';
 import { PostPreview } from '~/components/posts/PostPreview';
 import { PostTypePicker, type PostKind } from '~/components/posts/PostTypePicker';
@@ -48,22 +51,10 @@ import { RichTextEditor } from '~/components/posts/RichTextEditor';
 import { SchedulePickerDialog, type ScheduleWindow } from '~/components/posts/SchedulePickerDialog';
 import { SendConfirmationDialog } from '~/components/posts/SendConfirmationDialog';
 import { ShortcutsSection } from '~/components/posts/ShortcutsSection';
-import { SplitPostButton } from '~/components/posts/SplitPostButton';
 import { VenueSection } from '~/components/posts/VenueSection';
 import { MAX_WEBSITE_LINKS, WebsiteLinksSection } from '~/components/posts/WebsiteLinksSection';
 import type { WebsiteLink } from '~/components/posts/WebsiteLinksSection';
-import {
-  Button,
-  Card,
-  CardContent,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '~/components/ui';
+import { Button, Card, CardContent, Input, Label } from '~/components/ui';
 import {
   isAnnouncementDraftId,
   isConsentFormDraftId,
@@ -96,6 +87,7 @@ interface CreatePostLoaderData {
   detail: PGPost | null;
   classes: PGApiSchoolClass[];
   staff: PGApiSchoolStaff[];
+  staffGroups: PGApiStaffGroups;
   students: PGApiSchoolStudent[];
   session: PGApiSession;
   /** Source data for the Level + CCA tabs on the recipient selector. */
@@ -133,21 +125,32 @@ export async function loader({
 }: LoaderFunctionArgs): Promise<CreatePostLoaderData> {
   const url = new URL(request.url);
   const kindParam = url.searchParams.get('kind');
-  const [detail, classes, staff, students, session, groupsAssigned, customGroupsList, configs] =
-    await Promise.all([
-      params.id ? loadPostByKind(params.id, kindParam) : Promise.resolve(null),
-      fetchSchoolClasses(),
-      fetchSchoolStaff(),
-      fetchSchoolStudents(),
-      fetchSession(),
-      fetchGroupsAssigned(),
-      fetchCustomGroups(),
-      getConfigs(),
-    ]);
+  const [
+    detail,
+    classes,
+    staff,
+    staffGroups,
+    students,
+    session,
+    groupsAssigned,
+    customGroupsList,
+    configs,
+  ] = await Promise.all([
+    params.id ? loadPostByKind(params.id, kindParam) : Promise.resolve(null),
+    fetchSchoolClasses(),
+    fetchSchoolStaff(),
+    fetchSchoolStaffGroups(),
+    fetchSchoolStudents(),
+    fetchSession(),
+    fetchGroupsAssigned(),
+    fetchCustomGroups(),
+    getConfigs(),
+  ]);
   return {
     detail,
     classes,
     staff,
+    staffGroups,
     students,
     session,
     groupsAssigned,
@@ -672,8 +675,17 @@ function editorHasContent(doc: PostFormState['descriptionDoc']): boolean {
 
 function CreatePostViewInner({ editId }: { editId?: string }) {
   const navigate = useNavigate();
-  const { detail, classes, staff, students, session, groupsAssigned, customGroups, configs } =
-    useLoaderData<CreatePostLoaderData>();
+  const {
+    detail,
+    classes,
+    staff,
+    staffGroups,
+    students,
+    session,
+    groupsAssigned,
+    customGroups,
+    configs,
+  } = useLoaderData<CreatePostLoaderData>();
   // Gate the Schedule side of the split button on PG's flag. Missing flag ⇒
   // treat as off (silent fallback) so the UI never promises behaviour PG has
   // turned off for the school.
@@ -955,33 +967,32 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
             </h1>
           </div>
 
-          {/* Right: save-status + preview toggle + save draft + split button */}
+          {/* Right: save-status + preview toggle + schedule + post */}
           <div className="flex items-center gap-3">
             <SaveStatusTicker status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
             <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
               {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
+            {scheduleEnabled && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!isFormValid || isSaving}
+                onClick={() => setShowScheduleDialog(true)}
+              >
+                <CalendarClock className="mr-1.5 h-4 w-4" />
+                Schedule
+              </Button>
+            )}
             <Button
-              variant="secondary"
+              variant="default"
               size="sm"
-              disabled={autoSave.status === 'saving'}
-              onClick={() => {
-                void autoSave.saveNow();
-              }}
-            >
-              {autoSave.status === 'saving' ? 'Saving…' : 'Save draft'}
-            </Button>
-            {/* Schedule action is gated on PG's `schedule_announcement_form_post`
-                flag. When disabled, `onSchedule` is left undefined so the
-                dropdown's "Schedule for later" entry still renders but
-                becomes a no-op — the consent-form path already round-trips
-                via `POST /consentForms/drafts` with `scheduledSendAt` set
-                (see `handleScheduleConfirm`). */}
-            <SplitPostButton
               disabled={!isFormValid || isSaving}
-              onPost={() => setShowSendDialog(true)}
-              onSchedule={scheduleEnabled ? () => setShowScheduleDialog(true) : undefined}
-            />
+              onClick={() => setShowSendDialog(true)}
+            >
+              <Send className="mr-1.5 h-4 w-4" />
+              Post
+            </Button>
             {uploadsPending && (
               <span className="text-xs text-muted-foreground">Attachments uploading…</span>
             )}
@@ -1030,6 +1041,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   value={state.selectedStaff}
                   onChange={(sel) => dispatch({ type: 'SET_STAFF', payload: sel })}
                   staff={staff}
+                  staffGroups={staffGroups}
                 />
               </div>
 
@@ -1041,24 +1053,15 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 <p className="text-sm text-muted-foreground">
                   Select the preferred email address to receive enquiries from parents.
                 </p>
-                <Select
+                <EnquiryEmailSelector
+                  emailOptions={emailOptions}
                   value={state.enquiryEmail ?? ''}
-                  onValueChange={(value) => {
+                  onChange={(email) => {
                     clearFieldError('enquiryEmail');
-                    dispatch({ type: 'SET_EMAIL', payload: value as string });
+                    dispatch({ type: 'SET_EMAIL', payload: email });
                   }}
-                >
-                  <SelectTrigger aria-invalid={fieldErrors.enquiryEmail ? true : undefined}>
-                    <SelectValue placeholder="Select or add an email..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {emailOptions.map((email) => (
-                      <SelectItem key={email} value={email}>
-                        {email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  aria-invalid={fieldErrors.enquiryEmail ? true : undefined}
+                />
                 {fieldErrors.enquiryEmail && (
                   <p role="alert" className="text-sm text-destructive">
                     {fieldErrors.enquiryEmail}
