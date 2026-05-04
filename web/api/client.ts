@@ -41,8 +41,11 @@ import type {
   PGApiCreateAnnouncementPayload,
   PGApiCreateConsentFormDraftPayload,
   PGApiCreateConsentFormPayload,
+  PGApiCreateCustomGroupResponse,
   PGApiCreateDraftPayload,
+  PGApiCustomGroupDetail,
   PGApiCustomGroupsList,
+  PGApiCustomGroupSummary,
   PGApiDuplicateAnnouncementResponse,
   PGApiDuplicateConsentFormResponse,
   PGApiGroupsAssigned,
@@ -797,6 +800,63 @@ function mapPgwCustomGroup(raw: PgwRawCustomGroup): PGApiCustomGroupSummary {
 export async function fetchCustomGroups(): Promise<PGApiCustomGroupsList> {
   const raw = await fetchApi<PgwRawCustomGroup[]>('/groups/custom');
   return { customGroups: raw.map(mapPgwCustomGroup) };
+}
+
+interface PgwRawCustomGroupDetail {
+  id: number;
+  groupName: string;
+  createdBy: string;
+  createdAt: string;
+  owners?: { staffId: number; staffName: string }[];
+  studentsList?: {
+    studentId: number;
+    studentName: string;
+    className: string;
+    indexNumber?: number;
+    uinFinNo?: string;
+    ccas?: string[];
+  }[];
+}
+
+function mapPgwCustomGroupDetail(raw: PgwRawCustomGroupDetail): PGApiCustomGroupDetail {
+  const owners = raw.owners ?? [];
+  const creator = owners[0];
+  return {
+    customGroupId: raw.id,
+    name: raw.groupName,
+    createdBy: creator?.staffId ?? 0,
+    createdByName: raw.createdBy,
+    isShared: owners.length > 1,
+    sharedWith: owners.slice(1),
+    students: (raw.studentsList ?? []).map((s) => ({
+      studentId: s.studentId,
+      studentName: s.studentName,
+      className: s.className,
+      indexNumber: s.indexNumber,
+      uinFinNo: s.uinFinNo,
+      ccas: s.ccas,
+    })),
+    createdAt: raw.createdAt,
+  };
+}
+
+export async function fetchCustomGroupDetail(id: number): Promise<PGApiCustomGroupDetail> {
+  const raw = await fetchApi<PgwRawCustomGroupDetail>(`/groups/custom/${id}`);
+  return mapPgwCustomGroupDetail(raw);
+}
+
+export async function createCustomGroup(payload: {
+  name: string;
+  studentIds: number[];
+}): Promise<PGApiCreateCustomGroupResponse> {
+  return mutateApi<PGApiCreateCustomGroupResponse>('POST', '/groups/custom', payload);
+}
+
+export async function updateCustomGroup(
+  id: number,
+  payload: { name: string; studentIds: number[] },
+): Promise<void> {
+  await mutateApi<void>('PUT', `/groups/custom/${id}`, payload);
 }
 
 export function fetchClassDetail(classId: number) {

@@ -421,6 +421,35 @@ export interface PGApiCustomGroupsList {
   customGroups: PGApiCustomGroupSummary[];
 }
 
+export interface PGApiCustomGroupDetailStudent {
+  studentId: number;
+  studentName: string;
+  className: string;
+  indexNumber?: number;
+  uinFinNo?: string;
+  ccas?: string[];
+}
+
+export interface PGApiCustomGroupSharedStaff {
+  staffId: number;
+  staffName: string;
+}
+
+export interface PGApiCustomGroupDetail {
+  customGroupId: number;
+  name: string;
+  createdBy: number;
+  createdByName: string;
+  isShared: boolean;
+  sharedWith: PGApiCustomGroupSharedStaff[];
+  students: PGApiCustomGroupDetailStudent[];
+  createdAt: string;
+}
+
+export interface PGApiCreateCustomGroupResponse {
+  customGroupId: number;
+}
+
 export interface PGApiClassDetail {
   classId: number;
   className: string;
