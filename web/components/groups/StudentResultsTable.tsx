@@ -63,7 +63,11 @@ export const StudentResultsTable: React.FC<StudentResultsTableProps> = ({
               </TableCell>
               <TableCell>
                 <div className="font-medium">{s.studentName}</div>
-                <div className="text-xs text-muted-foreground">{s.uinFinNo}</div>
+                <div className="text-xs text-muted-foreground">
+                  {s.uinFinNo
+                    ? `${s.uinFinNo.slice(0, 1)}${'*'.repeat(Math.max(0, s.uinFinNo.length - 4))}${s.uinFinNo.slice(-3)}`
+                    : ''}
+                </div>
               </TableCell>
               <TableCell>
                 <div>{s.className}</div>

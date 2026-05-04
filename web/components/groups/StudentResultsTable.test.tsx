@@ -40,7 +40,7 @@ describe('StudentResultsTable', () => {
       />,
     );
     expect(screen.getByText('ALDDIN ANG MO KIO')).toBeInTheDocument();
-    expect(screen.getByText(/S9000003A/i)).toBeInTheDocument();
+    expect(screen.getByText(/S\*{5}03A/)).toBeInTheDocument();
     expect(screen.getByText(/H6 KINDNESS/i)).toBeInTheDocument();
   });
 
