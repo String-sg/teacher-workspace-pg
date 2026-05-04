@@ -47,6 +47,10 @@ const router = createBrowserRouter([
         lazy: () => import('./containers/AddStudentsView'),
       },
       {
+        path: 'groups/customGroups/:id',
+        lazy: () => import('./containers/CustomGroupDetailView'),
+      },
+      {
         path: 'components',
         lazy: () => import('./containers/ComponentsView'),
       },
