@@ -878,6 +878,12 @@ export async function updateCustomGroup(
   });
 }
 
+export async function shareCustomGroup(id: number, staffIds: number[]): Promise<void> {
+  await mutateApi<void>('PUT', `/groups/custom/${id}/share`, {
+    selectedStaff: staffIds,
+  });
+}
+
 export function fetchClassDetail(classId: number) {
   return fetchApi<PGApiClassDetail>(`/groups/classes/${classId}`);
 }
