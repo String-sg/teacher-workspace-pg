@@ -8,6 +8,7 @@ import { ShareGroupModal } from '~/components/groups/ShareGroupModal';
 import { StudentsByClassList } from '~/components/groups/StudentsByClassList';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui';
 import { formatDate } from '~/helpers/dateTime';
+import { notify } from '~/lib/notify';
 
 interface LoaderData {
   detail: PGApiCustomGroupDetail;
@@ -28,7 +29,11 @@ const CustomGroupDetailView: React.FC = () => {
 
   async function handleShare(staffIds: number[]) {
     await shareCustomGroup(data.customGroupId, staffIds);
-    revalidator.revalidate();
+    try {
+      revalidator.revalidate();
+    } catch {
+      notify.error('Shared successfully, but could not refresh the page. Please reload.');
+    }
   }
 
   return (
