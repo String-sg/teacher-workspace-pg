@@ -1,24 +1,36 @@
-import React from 'react';
-import { Link, useLoaderData } from 'react-router';
+import React, { useState } from 'react';
+import { Link, useLoaderData, useRevalidator } from 'react-router';
 
-import { fetchCustomGroupDetail } from '~/api/client';
-import type { PGApiCustomGroupDetail } from '~/api/types';
+import { fetchCustomGroupDetail, fetchSchoolStaff, shareCustomGroup } from '~/api/client';
+import type { PGApiCustomGroupDetail, PGApiSchoolStaff } from '~/api/types';
+import { ShareGroupModal } from '~/components/groups/ShareGroupModal';
 import { StudentsByClassList } from '~/components/groups/StudentsByClassList';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui';
 import { formatDate } from '~/helpers/dateTime';
 
-export async function loader({
-  params,
-}: {
-  params: { id?: string };
-}): Promise<PGApiCustomGroupDetail> {
+interface LoaderData {
+  detail: PGApiCustomGroupDetail;
+  staff: PGApiSchoolStaff[];
+}
+
+export async function loader({ params }: { params: { id?: string } }): Promise<LoaderData> {
   const id = Number(params.id);
   if (!Number.isFinite(id)) throw new Response('Invalid group id', { status: 400 });
-  return fetchCustomGroupDetail(id);
+  const [detail, staff] = await Promise.all([fetchCustomGroupDetail(id), fetchSchoolStaff()]);
+  return { detail, staff };
 }
 
 const CustomGroupDetailView: React.FC = () => {
-  const data = useLoaderData() as PGApiCustomGroupDetail;
+  const { detail: data, staff } = useLoaderData() as LoaderData;
+  const revalidator = useRevalidator();
+  const [shareOpen, setShareOpen] = useState(false);
+
+  const excludeStaffIds = [data.createdBy, ...data.sharedWith.map((s) => s.staffId)];
+
+  async function handleShare(staffIds: number[]) {
+    await shareCustomGroup(data.customGroupId, staffIds);
+    revalidator.revalidate();
+  }
 
   return (
     <div className="flex justify-center px-6 py-6">
@@ -59,7 +71,7 @@ const CustomGroupDetailView: React.FC = () => {
                 <p className="mt-1 text-xs text-muted-foreground">
                   You will be granting access to edit this group. Please be certain.
                 </p>
-                <Button variant="outline" className="mt-3" disabled>
+                <Button variant="outline" className="mt-3" onClick={() => setShareOpen(true)}>
                   Share Group
                 </Button>
               </article>
@@ -75,6 +87,14 @@ const CustomGroupDetailView: React.FC = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        <ShareGroupModal
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          staff={staff}
+          excludeStaffIds={excludeStaffIds}
+          onShare={handleShare}
+        />
       </div>
     </div>
   );
