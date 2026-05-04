@@ -51,6 +51,14 @@ const router = createBrowserRouter([
         lazy: () => import('./containers/CustomGroupDetailView'),
       },
       {
+        path: 'groups/customGroups/:id/edit',
+        lazy: () => import('./containers/EditCustomGroupView'),
+      },
+      {
+        path: 'groups/customGroups/:id/edit/addStudents',
+        lazy: () => import('./containers/AddStudentsView'),
+      },
+      {
         path: 'components',
         lazy: () => import('./containers/ComponentsView'),
       },

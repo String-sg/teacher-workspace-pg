@@ -92,10 +92,16 @@ const AddStudentsView: React.FC = () => {
     });
   }
 
+  // Strip the trailing /addStudents segment to return to whichever parent
+  // (create or edit) launched this subpage. Lets the same component back
+  // both `/groups/customGroups/new/addStudents` and
+  // `/groups/customGroups/:id/edit/addStudents`.
+  const parentPath = location.pathname.replace(/\/addStudents$/, '');
+
   function submit() {
     const addedStudents = data.students.filter((s) => selectedIds.has(s.studentId));
     const state: OutgoingNavState = { addedStudents };
-    navigate('/groups/customGroups/new', { state });
+    navigate(parentPath, { state });
   }
 
   return (
@@ -104,7 +110,7 @@ const AddStudentsView: React.FC = () => {
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Add students</h1>
           <Link
-            to="/groups/customGroups/new"
+            to={parentPath}
             aria-label="Close"
             className="rounded-md p-2 text-muted-foreground hover:bg-muted"
           >
@@ -136,7 +142,7 @@ const AddStudentsView: React.FC = () => {
 
         <footer className="flex items-center justify-end gap-3">
           <Link
-            to="/groups/customGroups/new"
+            to={parentPath}
             className="text-sm font-medium text-muted-foreground hover:underline"
           >
             Cancel
