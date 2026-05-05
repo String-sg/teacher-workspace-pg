@@ -20,6 +20,8 @@ import { formatFileSize } from '~/helpers/attachments';
 import { formatDateTime, formatLocalDate, formatLocalDateTimeRange } from '~/helpers/dateTime';
 import { createRichTextExtensions, extractTextFromTiptap } from '~/helpers/tiptap';
 
+import { summariseRecipients } from './summarise-recipients';
+
 // Built once — `generateHTML` only reads the schema, so the extensions never
 // need a maxLength here (CharacterCount has no effect on static rendering).
 const RICH_TEXT_EXTENSIONS = createRichTextExtensions();
@@ -350,18 +352,6 @@ function PreviewPhoto({ photo, large = false }: { photo: UploadingFile; large?: 
       className={`rounded-lg object-cover ${large ? 'aspect-video w-full' : 'aspect-square w-full'}`}
     />
   );
-}
-
-/** Pick a single label to stand in for the per-parent child-name line.
- *  Prefers an individual-student selection; falls back to the first group's
- *  label. Returns null when nothing is selected so the placeholder shows. */
-function summariseRecipients(recipients: PostFormState['selectedRecipients']): string | null {
-  if (recipients.length === 0) return null;
-  const individual = recipients.find((r) => r.type === 'individual');
-  const primary = individual ?? recipients[0];
-  const extra = recipients.length - 1;
-  const base = primary.label.toUpperCase();
-  return extra > 0 ? `${base} · +${extra} more` : base;
 }
 
 export { PostPreview };
