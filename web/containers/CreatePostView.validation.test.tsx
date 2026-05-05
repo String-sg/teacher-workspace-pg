@@ -48,6 +48,16 @@ describe('isCreatePostFormValid — announcement', () => {
     expect(isCreatePostFormValid({ ...validBase, description: '' }, 'post')).toBe(false);
   });
 
+  it('fails when description exceeds 2000 characters', () => {
+    const longDesc = 'a'.repeat(2001);
+    expect(isCreatePostFormValid({ ...validBase, description: longDesc }, 'post')).toBe(false);
+  });
+
+  it('passes when description is exactly 2000 characters', () => {
+    const maxDesc = 'a'.repeat(2000);
+    expect(isCreatePostFormValid({ ...validBase, description: maxDesc }, 'post')).toBe(true);
+  });
+
   it('fails when enquiry email is empty', () => {
     expect(isCreatePostFormValid({ ...validBase, enquiryEmail: '' }, 'post')).toBe(false);
   });
@@ -62,7 +72,7 @@ describe('isCreatePostFormValid — post-with-response (form)', () => {
     ...validBase,
     kind: 'form',
     responseType: 'acknowledge',
-    dueDate: '2026-05-01',
+    dueDate: '2099-12-31',
   };
 
   it('passes with all required fields for acknowledge', () => {

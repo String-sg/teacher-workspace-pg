@@ -21,7 +21,8 @@ export function isCreatePostFormValid(
     state.title.trim().length > 0 &&
     state.enquiryEmail.trim().length > 0 &&
     state.selectedRecipients.length > 0 &&
-    state.description.trim().length > 0;
+    state.description.trim().length > 0 &&
+    state.description.length <= 2000;
 
   if (!baseValid) return false;
 

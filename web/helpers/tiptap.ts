@@ -44,7 +44,7 @@ export function createRichTextExtensions(opts?: { maxLength?: number }) {
       types: ['paragraph', 'orderedList', 'bulletList'],
       alignments: ['left', 'center', 'right', 'justify'],
     }),
-    ...(opts?.maxLength != null ? [CharacterCount.configure({ limit: opts.maxLength })] : []),
+    ...(opts?.maxLength != null ? [CharacterCount.configure({ limit: null })] : []),
   ];
 }
 
