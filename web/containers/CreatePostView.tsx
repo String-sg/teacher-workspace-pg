@@ -1115,8 +1115,17 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   <Label id="post-description-label">
                     Description <span className="text-destructive">*</span>
                   </Label>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {state.description.length}/2000
+                  <span
+                    className={cn(
+                      'text-xs tabular-nums',
+                      state.description.length > 2000
+                        ? 'font-medium text-info-foreground'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {state.description.length > 2000
+                      ? `Exceeded by ${state.description.length - 2000} characters`
+                      : `${state.description.length}/2000`}
                   </span>
                 </div>
                 <RichTextEditor
