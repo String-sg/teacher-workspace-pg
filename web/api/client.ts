@@ -884,8 +884,12 @@ export async function updateCustomGroup(
 
 export async function shareCustomGroup(id: number, staffIds: number[]): Promise<void> {
   await mutateApi<void>('PUT', `/groups/custom/${id}/share`, {
-    staffIds,
+    selectedStaff: staffIds,
   });
+}
+
+export async function removeAccessFromCustomGroup(id: number): Promise<void> {
+  await mutateApi<void>('PUT', `/groups/custom/${id}/removeAccess`, {});
 }
 
 export function deleteCustomGroup(id: number) {

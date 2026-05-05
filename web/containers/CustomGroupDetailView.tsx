@@ -42,21 +42,19 @@ const CustomGroupDetailView: React.FC = () => {
     navigate('/groups');
   }
 
-  async function handleShare(desiredStaffIds: number[]) {
-    const previousIds = new Set(data.sharedWith.map((s) => s.staffId));
-    const desiredIds = new Set(desiredStaffIds);
-
-    const added = desiredStaffIds.filter((id) => !previousIds.has(id));
-    const removed = data.sharedWith.map((s) => s.staffId).filter((id) => !desiredIds.has(id));
-
-    if (added.length > 0) await shareCustomGroup(data.customGroupId, added);
-    await Promise.all(removed.map((id) => removeAccessFromCustomGroup(data.customGroupId, id)));
-
+  async function handleShare(staffIds: number[]) {
+    await shareCustomGroup(data.customGroupId, staffIds);
     try {
       revalidator.revalidate();
     } catch {
-      notify.error('Updated successfully, but could not refresh the page. Please reload.');
+      notify.error('Shared successfully, but could not refresh the page. Please reload.');
     }
+  }
+
+  async function handleRemoveAccess() {
+    await removeAccessFromCustomGroup(data.customGroupId);
+    notify.success('Access removed.');
+    navigate('/groups');
   }
 
   return (
@@ -130,7 +128,7 @@ const CustomGroupDetailView: React.FC = () => {
                   <p className="mt-1 text-xs text-muted-foreground">
                     You will lose access to this shared group. Other staff will still retain access.
                   </p>
-                  <Button variant="outline" className="mt-3" disabled>
+                  <Button variant="outline" className="mt-3" onClick={handleRemoveAccess}>
                     Remove Access
                   </Button>
                 </article>
