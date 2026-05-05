@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui';
+import { notify } from '~/lib/notify';
 
 interface DeleteGroupModalProps {
   open: boolean;
@@ -31,9 +32,7 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
         if (!nextOpen) onClose();
       }}
     >
-      {open && (
-        <DeleteGroupModalContent groupName={groupName} onDelete={onDelete} onClose={onClose} />
-      )}
+      {open && <DeleteGroupModalContent groupName={groupName} onDelete={onDelete} />}
     </Dialog>
   );
 };
@@ -41,8 +40,7 @@ export const DeleteGroupModal: React.FC<DeleteGroupModalProps> = ({
 const DeleteGroupModalContent: React.FC<{
   groupName: string;
   onDelete: () => Promise<void>;
-  onClose: () => void;
-}> = ({ groupName, onDelete, onClose }) => {
+}> = ({ groupName, onDelete }) => {
   const [confirmed, setConfirmed] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -51,8 +49,9 @@ const DeleteGroupModalContent: React.FC<{
     setDeleting(true);
     try {
       await onDelete();
-      onClose();
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not delete the group.';
+      notify.error(msg);
       setDeleting(false);
     }
   }

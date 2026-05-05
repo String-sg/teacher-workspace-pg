@@ -6,6 +6,7 @@ import {
   deleteCustomGroup,
   fetchCustomGroupDetail,
   fetchSchoolStaff,
+  removeAccessFromCustomGroup,
   shareCustomGroup,
 } from '~/api/client';
 import type { PGApiCustomGroupDetail, PGApiSchoolStaff } from '~/api/types';
@@ -41,12 +42,20 @@ const CustomGroupDetailView: React.FC = () => {
     navigate('/groups');
   }
 
-  async function handleShare(staffIds: number[]) {
-    await shareCustomGroup(data.customGroupId, staffIds);
+  async function handleShare(desiredStaffIds: number[]) {
+    const previousIds = new Set(data.sharedWith.map((s) => s.staffId));
+    const desiredIds = new Set(desiredStaffIds);
+
+    const added = desiredStaffIds.filter((id) => !previousIds.has(id));
+    const removed = data.sharedWith.map((s) => s.staffId).filter((id) => !desiredIds.has(id));
+
+    if (added.length > 0) await shareCustomGroup(data.customGroupId, added);
+    await Promise.all(removed.map((id) => removeAccessFromCustomGroup(data.customGroupId, id)));
+
     try {
       revalidator.revalidate();
     } catch {
-      notify.error('Shared successfully, but could not refresh the page. Please reload.');
+      notify.error('Updated successfully, but could not refresh the page. Please reload.');
     }
   }
 
@@ -105,15 +114,27 @@ const CustomGroupDetailView: React.FC = () => {
                   Share Group
                 </Button>
               </article>
-              <article className="rounded-md border p-4">
-                <h3 className="font-semibold">Delete this custom group</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Once you delete this custom group, you can never get it back again.
-                </p>
-                <Button variant="outline" className="mt-3" onClick={() => setDeleteOpen(true)}>
-                  Delete Forever
-                </Button>
-              </article>
+              {data.sharedWith.length === 0 ? (
+                <article className="rounded-md border p-4">
+                  <h3 className="font-semibold">Delete this custom group</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Once you delete this custom group, you can never get it back again.
+                  </p>
+                  <Button variant="outline" className="mt-3" onClick={() => setDeleteOpen(true)}>
+                    Delete Forever
+                  </Button>
+                </article>
+              ) : (
+                <article className="rounded-md border p-4">
+                  <h3 className="font-semibold">Remove access to this group</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    You will lose access to this shared group. Other staff will still retain access.
+                  </p>
+                  <Button variant="outline" className="mt-3" disabled>
+                    Remove Access
+                  </Button>
+                </article>
+              )}
             </div>
           </TabsContent>
         </Tabs>
