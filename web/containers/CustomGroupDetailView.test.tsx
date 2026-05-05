@@ -105,7 +105,7 @@ describe('CustomGroupDetailView', () => {
       '/groups/customGroups/5/edit',
     );
     expect(screen.getByRole('button', { name: /share group/i })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /delete forever/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /delete forever/i })).toBeEnabled();
   });
 
   it('renders shared-with names when group is shared', async () => {

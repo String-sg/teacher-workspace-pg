@@ -888,6 +888,10 @@ export async function shareCustomGroup(id: number, staffIds: number[]): Promise<
   });
 }
 
+export function deleteCustomGroup(id: number) {
+  return deleteApi(`/groups/custom/${id}`);
+}
+
 export function fetchClassDetail(classId: number) {
   return fetchApi<PGApiClassDetail>(`/groups/classes/${classId}`);
 }
