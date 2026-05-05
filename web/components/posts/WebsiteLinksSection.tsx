@@ -11,6 +11,7 @@ import { Button, Input, Label } from '~/components/ui';
  * into `webLinkList` for both kinds.
  */
 const MAX_WEBSITE_LINKS = 3;
+const MAX_LINK_DESCRIPTION_LENGTH = 40;
 
 export interface WebsiteLink {
   /** Raw URL the teacher typed. Forwarded verbatim into `webLink`. */
@@ -85,6 +86,7 @@ function WebsiteLinksSection({ value, dispatch }: WebsiteLinksSectionProps) {
                 <Input
                   id={`website-link-title-${index}`}
                   placeholder="Link description"
+                  maxLength={MAX_LINK_DESCRIPTION_LENGTH}
                   value={link.title}
                   onChange={(e) =>
                     dispatch({
