@@ -63,4 +63,9 @@ describe('ShareGroupModal', () => {
     renderModal();
     expect(screen.getByRole('button', { name: /share group/i })).toBeDisabled();
   });
+
+  it('renders the button disabled even when staff are already shared', () => {
+    renderModal(vi.fn().mockResolvedValue(undefined), [1002]);
+    expect(screen.getByRole('button', { name: /share group/i })).toBeDisabled();
+  });
 });

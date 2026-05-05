@@ -64,29 +64,11 @@ const ShareGroupModalContent: React.FC<{
   const alreadySharedSet = useMemo(() => new Set(alreadySharedStaffIds), [alreadySharedStaffIds]);
 
   const pickerStaff = useMemo(
-    () => staff.filter((s) => s.staffId !== creatorStaffId),
-    [staff, creatorStaffId],
+    () => staff.filter((s) => s.staffId !== creatorStaffId && !alreadySharedSet.has(s.staffId)),
+    [staff, creatorStaffId, alreadySharedSet],
   );
 
-  const initialSelected = useMemo<SelectedStaff[]>(
-    () =>
-      staff
-        .filter((s) => alreadySharedSet.has(s.staffId))
-        .map((s) => ({
-          id: s.staffId.toString(),
-          label: s.name,
-          type: 'individual' as const,
-          count: 1,
-        })),
-    [staff, alreadySharedSet],
-  );
-
-  const [selected, setSelected] = useState<SelectedStaff[]>(initialSelected);
-
-  const newStaffIds = useMemo(
-    () => selected.map((s) => Number(s.id)).filter((id) => !alreadySharedSet.has(id)),
-    [selected, alreadySharedSet],
-  );
+  const [selected, setSelected] = useState<SelectedStaff[]>([]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setSelectorReady(true));
@@ -94,10 +76,10 @@ const ShareGroupModalContent: React.FC<{
   }, []);
 
   async function handleShare() {
-    if (newStaffIds.length === 0) return;
+    if (selected.length === 0) return;
     setSubmitting(true);
     try {
-      await onShare(newStaffIds);
+      await onShare(selected.map((s) => Number(s.id)));
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not share the group.';
@@ -130,7 +112,7 @@ const ShareGroupModalContent: React.FC<{
       </div>
 
       <DialogFooter>
-        <Button disabled={newStaffIds.length === 0 || submitting} onClick={handleShare}>
+        <Button disabled={selected.length === 0 || submitting} onClick={handleShare}>
           {submitting ? 'Sharing…' : 'Share group'}
         </Button>
       </DialogFooter>
