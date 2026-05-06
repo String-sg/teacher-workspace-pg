@@ -120,7 +120,7 @@ const PostPreview = React.memo(function PostPreview({
       {/* relative so chrome overlay and gallery can use absolute positioning */}
       <div className="relative flex h-[580px] flex-col overflow-hidden rounded-[1.75rem] border-[7px] border-[#1a1f2e] bg-white">
         {/* Mobile chrome — always a frosted white bar so icons stay readable over any content */}
-        <div className="absolute inset-x-0 top-0 z-10 flex shrink-0 items-center justify-between bg-white/85 px-4 py-2.5 backdrop-blur-md">
+        <div className="absolute inset-x-0 top-0 z-10 flex shrink-0 items-center justify-between rounded-t-[1.3rem] bg-white/85 px-4 py-2.5 backdrop-blur-md">
           <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
           <div className="flex items-center gap-3 text-foreground">
             <ArrowUp className="h-4 w-4" strokeWidth={2} />
