@@ -1,10 +1,9 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from '@flow/core';
 import { FileText, GripVertical, ImageIcon, Info, Loader2, Paperclip, X } from 'lucide-react';
 import { useRef, useState, type Dispatch } from 'react';
 
 import type { AttachmentUploadType } from '~/api/client';
 import { uploadAttachment } from '~/api/client';
-import { Badge, Button } from '~/components/ui';
+import { Badge, Button, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
 import type { PostFormAction, UploadingFile } from '~/containers/CreatePostView';
 import {
   ALLOWED_FILE_MIME,
@@ -138,25 +137,23 @@ function FilesSubSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium">Files</p>
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <Popover>
+            <PopoverTrigger asChild>
               <button
                 type="button"
                 className="flex items-center text-muted-foreground/50 hover:text-muted-foreground"
               >
                 <Info className="h-3.5 w-3.5" />
               </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              showArrow={false}
-              className="max-w-[210px] leading-relaxed"
-            >
-              PDF · Word (.docx) · Excel (.xlsx) · PowerPoint (.pptx)
-              <br />
-              Max 5 MB per file
-            </TooltipContent>
-          </Tooltip>
+            </PopoverTrigger>
+            <PopoverContent side="right" className="w-auto p-3 text-xs leading-relaxed">
+              <p className="font-medium text-foreground">Accepted file types</p>
+              <p className="mt-1 text-muted-foreground">
+                PDF · Word (.docx) · Excel (.xlsx) · PowerPoint (.pptx)
+              </p>
+              <p className="mt-1 text-muted-foreground">Max 5 MB per file</p>
+            </PopoverContent>
+          </Popover>
         </div>
         <p className="text-xs text-muted-foreground">
           {readyCount}/{MAX_FILE_ITEMS}
@@ -270,25 +267,21 @@ function PhotosSubSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium">Photos</p>
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <Popover>
+            <PopoverTrigger asChild>
               <button
                 type="button"
                 className="flex items-center text-muted-foreground/50 hover:text-muted-foreground"
               >
                 <Info className="h-3.5 w-3.5" />
               </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              showArrow={false}
-              className="max-w-[160px] leading-relaxed"
-            >
-              JPEG · PNG · WebP
-              <br />
-              Max 5 MB per photo
-            </TooltipContent>
-          </Tooltip>
+            </PopoverTrigger>
+            <PopoverContent side="right" className="w-auto p-3 text-xs leading-relaxed">
+              <p className="font-medium text-foreground">Accepted photo types</p>
+              <p className="mt-1 text-muted-foreground">JPEG · PNG · WebP</p>
+              <p className="mt-1 text-muted-foreground">Max 5 MB per photo</p>
+            </PopoverContent>
+          </Popover>
         </div>
         <p className="text-xs text-muted-foreground">
           {readyCount}/{MAX_PHOTO_ITEMS}
