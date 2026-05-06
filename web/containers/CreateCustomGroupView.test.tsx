@@ -50,15 +50,14 @@ describe('CreateCustomGroupView', () => {
     expect(screen.getByText(/no students added yet/i)).toBeInTheDocument();
   });
 
-  it('shows an "+ Add Students" dropdown with "Add manually" enabled (links to subpage) and "Upload via Excel" disabled', async () => {
+  it('shows an "+ Add Students" dropdown with "Add manually" (links to subpage) and "Upload via Excel" enabled when no students', async () => {
     renderView();
     const triggers = screen.getAllByRole('button', { name: /add students/i });
     fireEvent.click(triggers[0]);
     const manual = await screen.findByRole('menuitem', { name: /add manually/i });
     const excel = await screen.findByRole('menuitem', { name: /upload via excel/i });
     expect(manual).not.toHaveAttribute('aria-disabled', 'true');
-    expect(excel).toHaveAttribute('aria-disabled', 'true');
-    // The menuitem IS the <a> tag (rendered via `render={<Link />}`) — assert it points at the subpage.
+    expect(excel).not.toHaveAttribute('aria-disabled', 'true');
     expect(manual).toHaveAttribute('href', '/groups/customGroups/new/addStudents');
   });
 

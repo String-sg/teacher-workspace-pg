@@ -270,8 +270,8 @@ func registerMockGroups(mux *http.ServeMux) {
 
 	// Writes
 	mux.HandleFunc("POST /api/web/2/staff/groups/custom", jsonStub(http.StatusCreated, `{"customGroupId":6}`))
-	mux.HandleFunc("POST /api/web/2/staff/groups/custom/validateStudents", jsonStub(http.StatusOK, `{"valid":true}`))
-	mux.HandleFunc("POST /api/web/2/staff/groups/custom/validateStudents/results", jsonStub(http.StatusOK, `{"valid":true,"errors":[]}`))
+	mux.HandleFunc("POST /api/web/2/staff/groups/custom/validateStudents", handleValidateStudents)
+	mux.HandleFunc("POST /api/web/2/staff/groups/custom/validateStudents/results", handleValidateStudentsResults)
 	mux.HandleFunc("POST /api/web/2/staff/groups/student/count", jsonStub(http.StatusOK, `{"count":30}`))
 	mux.HandleFunc("PUT /api/web/2/staff/groups/custom/{customGroupId}", jsonStub(http.StatusOK, `{}`))
 	mux.HandleFunc("PUT /api/web/2/staff/groups/custom/{customGroupId}/share", jsonStub(http.StatusOK, `{}`))
@@ -380,6 +380,48 @@ func handleMockPreUpload(w http.ResponseWriter, r *http.Request) {
 func registerMockPlatform(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/feature/2/flags", serveFixture("fixtures/feature_flags.json"))
 	mux.HandleFunc("GET /api/web/2/webNotification", serveFixture("fixtures/web_notifications.json"))
+}
+
+// ─── Validate students (Excel upload two-step mock) ───────────────────────
+
+var validateStudentsToken atomic.Uint64
+
+func handleValidateStudents(w http.ResponseWriter, r *http.Request) {
+	seq := validateStudentsToken.Add(1)
+	token := "mock-token-" + strconv.FormatUint(seq, 10)
+
+	resp := map[string]any{
+		"body":       map[string]any{"token": token},
+		"resultCode": 1,
+		"message":    "Success",
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func handleValidateStudentsResults(w http.ResponseWriter, r *http.Request) {
+	fixtureData, err := fixtures.ReadFile("fixtures/validate_students_results.json")
+	if err != nil {
+		http.Error(w, "fixture not found", http.StatusInternalServerError)
+		return
+	}
+
+	var inner any
+	_ = json.Unmarshal(fixtureData, &inner)
+
+	resp := map[string]any{
+		"body":       inner,
+		"resultCode": 1,
+		"message":    "Success",
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
