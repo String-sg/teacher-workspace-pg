@@ -165,31 +165,24 @@ const PostPreview = React.memo(function PostPreview({
             </div>
 
             <div
-              className={`mt-2 flex items-center gap-1.5 text-[13px] font-semibold tracking-wider uppercase ${
+              className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium tracking-wider uppercase ${
                 recipientSummary ? 'text-foreground' : 'text-muted-foreground/60'
               }`}
             >
-              <User className="h-3.5 w-3.5" strokeWidth={2.25} />
+              <User className="h-3 w-3" strokeWidth={2.25} />
               {recipientSummary ?? 'STUDENT NAME'}
             </div>
 
             {/* Venue + event range — inline rows directly under student name, matching PG app */}
             {isForm && venue && (
-              <div className="mt-1.5 flex items-start gap-2 text-[13px] text-foreground">
-                <MapPin
-                  className="mt-0.5 h-4 w-4 shrink-0 text-foreground"
-                  fill="currentColor"
-                  strokeWidth={0}
-                />
+              <div className="mt-1 flex items-start gap-1.5 text-[11px] text-foreground">
+                <MapPin className="mt-px h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={2} />
                 <span>{venue}</span>
               </div>
             )}
             {isForm && eventRange && (
-              <div className="mt-1.5 flex items-start gap-2 text-[13px] font-medium text-foreground">
-                <CalendarClock
-                  className="mt-0.5 h-4 w-4 shrink-0 text-foreground"
-                  strokeWidth={1.75}
-                />
+              <div className="mt-1 flex items-start gap-1.5 text-[11px] font-medium text-primary">
+                <CalendarClock className="mt-px h-3 w-3 shrink-0 text-primary" strokeWidth={2} />
                 <span>{eventRange}</span>
               </div>
             )}
