@@ -175,20 +175,14 @@ const PostPreview = React.memo(function PostPreview({
 
             {/* Venue + event range — inline rows directly under student name, matching PG app */}
             {isForm && venue && (
-              <div className="mt-1.5 flex items-start gap-1.5 text-sm text-foreground">
-                <MapPin
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                  strokeWidth={2}
-                />
+              <div className="mt-1 flex items-start gap-1.5 text-[11px] text-foreground">
+                <MapPin className="mt-px h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={2} />
                 <span>{venue}</span>
               </div>
             )}
             {isForm && eventRange && (
-              <div className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-primary">
-                <CalendarClock
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary"
-                  strokeWidth={2}
-                />
+              <div className="mt-1 flex items-start gap-1.5 text-[11px] font-medium text-primary">
+                <CalendarClock className="mt-px h-3 w-3 shrink-0 text-primary" strokeWidth={2} />
                 <span>{eventRange}</span>
               </div>
             )}
