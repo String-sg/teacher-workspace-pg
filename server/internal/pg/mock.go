@@ -286,6 +286,7 @@ func registerMockSchool(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/web/2/staff/school/students", serveFixture("fixtures/school_students.json"))
 	mux.HandleFunc("GET /api/web/2/staff/school/groups", serveFixture("fixtures/school_groups.json"))
 	mux.HandleFunc("GET /api/web/2/staff/school/studentGroups", serveFixture("fixtures/school_student_groups.json"))
+	mux.HandleFunc("GET /api/web/2/staff/school/staffGroups", serveFixture("fixtures/school_staff_groups.json"))
 	mux.HandleFunc("GET /api/web/2/staff/school/students/retrieveReport", jsonStub(http.StatusOK, `{}`))
 	mux.HandleFunc("POST /api/web/2/staff/school/travelDeclaration", jsonStub(http.StatusOK, `{}`))
 }

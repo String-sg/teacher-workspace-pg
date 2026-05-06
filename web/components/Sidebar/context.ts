@@ -17,6 +17,10 @@ export interface SidebarContextValues {
    * Toggle the sidebar open state.
    */
   toggleSidebar: () => void;
+  /**
+   * Programmatically open or close the sidebar.
+   */
+  setOpen: (open: boolean) => void;
 }
 
 export const SidebarContext = createContext<SidebarContextValues | undefined>(undefined);

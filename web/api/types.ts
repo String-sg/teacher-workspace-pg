@@ -364,6 +364,18 @@ export interface PGApiSchoolStaff {
 
 export type PGApiSchoolStaffList = PGApiSchoolStaff[];
 
+export interface PGApiStaffGroupItem {
+  id: string;
+  label: string;
+  count: number;
+  memberNames?: string[];
+}
+
+export interface PGApiStaffGroups {
+  level: PGApiStaffGroupItem[];
+  school: PGApiStaffGroupItem[];
+}
+
 export interface PGApiSchoolClass {
   type: 'class';
   label: string;
@@ -382,7 +394,7 @@ export interface PGApiSchoolStudent {
   className: string;
   levelCode: string;
   levelDescription: string;
-  cca: unknown[];
+  cca: string[];
 }
 
 export interface PGApiGroupsAssignedClass {

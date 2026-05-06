@@ -11,22 +11,10 @@ import { formatLocalDate } from '~/helpers/dateTime';
 
 type ReminderRadioValue = 'NONE' | 'ONE_TIME' | 'DAILY';
 
-const REMINDER_OPTIONS: { value: ReminderRadioValue; label: string; description: string }[] = [
-  {
-    value: 'NONE',
-    label: 'None',
-    description: 'No reminder will be sent to parents.',
-  },
-  {
-    value: 'ONE_TIME',
-    label: 'One-time',
-    description: 'A single reminder on a chosen date.',
-  },
-  {
-    value: 'DAILY',
-    label: 'Daily',
-    description: 'Daily reminders starting from a chosen date until they respond.',
-  },
+const REMINDER_OPTIONS: { value: ReminderRadioValue; label: string }[] = [
+  { value: 'NONE', label: 'None' },
+  { value: 'ONE_TIME', label: 'One-time' },
+  { value: 'DAILY', label: 'Daily' },
 ];
 
 interface ReminderSectionProps {
@@ -89,15 +77,15 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
       <RadioGroup
         value={value.type}
         onValueChange={(v) => handleRadioChange(v as ReminderRadioValue)}
-        className="gap-3"
+        className="gap-2"
       >
         {REMINDER_OPTIONS.map((option) => (
-          <label key={option.value} className="flex cursor-pointer items-start gap-3">
-            <RadioGroupItem value={option.value} className="mt-0.5" />
-            <div>
-              <Label className="cursor-pointer">{option.label}</Label>
-              <p className="text-sm text-muted-foreground">{option.description}</p>
-            </div>
+          <label
+            key={option.value}
+            className="flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors hover:bg-muted/40"
+          >
+            <RadioGroupItem value={option.value} />
+            <Label className="cursor-pointer">{option.label}</Label>
           </label>
         ))}
       </RadioGroup>

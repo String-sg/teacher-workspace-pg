@@ -1,5 +1,5 @@
-import { ArrowLeft, Eye, EyeOff, Plus } from 'lucide-react';
-import { useDeferredValue, useMemo, useReducer, useRef, useState } from 'react';
+import { ArrowLeft, CalendarClock, Eye, EyeOff, Plus, Send } from 'lucide-react';
+import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { LoaderFunctionArgs } from 'react-router';
 import { Link, Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
 
@@ -12,6 +12,7 @@ import {
   fetchGroupsAssigned,
   fetchSchoolClasses,
   fetchSchoolStaff,
+  fetchSchoolStaffGroups,
   fetchSchoolStudents,
   fetchSession,
   getConfigs,
@@ -36,12 +37,14 @@ import type {
   PGApiSchoolStaff,
   PGApiSchoolStudent,
   PGApiSession,
+  PGApiStaffGroups,
 } from '~/api/types';
 import type { SelectedEntity } from '~/components/comms/entity-selector';
 import { StaffSelector } from '~/components/comms/staff-selector';
 import { StudentRecipientSelector } from '~/components/comms/student-recipient-selector';
 import { AttachmentSection } from '~/components/posts/AttachmentSection';
 import { DueDateSection } from '~/components/posts/DueDateSection';
+import { EnquiryEmailSelector } from '~/components/posts/EnquiryEmailSelector';
 import { EventScheduleSection } from '~/components/posts/EventScheduleSection';
 import { PostPreview } from '~/components/posts/PostPreview';
 import { PostTypePicker, type PostKind } from '~/components/posts/PostTypePicker';
@@ -52,22 +55,11 @@ import { RichTextEditor } from '~/components/posts/RichTextEditor';
 import { SchedulePickerDialog, type ScheduleWindow } from '~/components/posts/SchedulePickerDialog';
 import { SendConfirmationDialog } from '~/components/posts/SendConfirmationDialog';
 import { ShortcutsSection } from '~/components/posts/ShortcutsSection';
-import { SplitPostButton } from '~/components/posts/SplitPostButton';
 import { VenueSection } from '~/components/posts/VenueSection';
 import { MAX_WEBSITE_LINKS, WebsiteLinksSection } from '~/components/posts/WebsiteLinksSection';
 import type { WebsiteLink } from '~/components/posts/WebsiteLinksSection';
-import {
-  Button,
-  Card,
-  CardContent,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '~/components/ui';
+import { useSidebarContext } from '~/components/Sidebar/context';
+import { Button, Card, CardContent, Input, Label } from '~/components/ui';
 import {
   isAnnouncementDraftId,
   isConsentFormDraftId,
@@ -100,6 +92,7 @@ interface CreatePostLoaderData {
   detail: PGPost | null;
   classes: PGApiSchoolClass[];
   staff: PGApiSchoolStaff[];
+  staffGroups: PGApiStaffGroups;
   students: PGApiSchoolStudent[];
   session: PGApiSession;
   /** Source data for the Level + CCA tabs on the recipient selector. */
@@ -137,21 +130,32 @@ export async function loader({
 }: LoaderFunctionArgs): Promise<CreatePostLoaderData> {
   const url = new URL(request.url);
   const kindParam = url.searchParams.get('kind');
-  const [detail, classes, staff, students, session, groupsAssigned, customGroupsList, configs] =
-    await Promise.all([
-      params.id ? loadPostByKind(params.id, kindParam) : Promise.resolve(null),
-      fetchSchoolClasses(),
-      fetchSchoolStaff(),
-      fetchSchoolStudents(),
-      fetchSession(),
-      fetchGroupsAssigned(),
-      fetchCustomGroups(),
-      getConfigs(),
-    ]);
+  const [
+    detail,
+    classes,
+    staff,
+    staffGroups,
+    students,
+    session,
+    groupsAssigned,
+    customGroupsList,
+    configs,
+  ] = await Promise.all([
+    params.id ? loadPostByKind(params.id, kindParam) : Promise.resolve(null),
+    fetchSchoolClasses(),
+    fetchSchoolStaff(),
+    fetchSchoolStaffGroups(),
+    fetchSchoolStudents(),
+    fetchSession(),
+    fetchGroupsAssigned(),
+    fetchCustomGroups(),
+    getConfigs(),
+  ]);
   return {
     detail,
     classes,
     staff,
+    staffGroups,
     students,
     session,
     groupsAssigned,
@@ -194,7 +198,7 @@ export interface UploadingFile {
   url?: string;
   /** Photos only; used for row thumbnails once the photo is ready. */
   thumbnailUrl?: string;
-  /** Photos only; exactly one entry carries `isCover: true` when photos is non-empty. */
+  /** Photos only; up to 3 entries carry `isCover: true` — these appear in the gallery. */
   isCover?: boolean;
   /** Populated on status === 'error'. */
   error?: string;
@@ -290,7 +294,8 @@ type PostFormAction =
       patch: Partial<UploadingFile>;
     }
   | { type: 'REMOVE_UPLOAD'; kind: 'file' | 'photo'; localId: string }
-  | { type: 'SET_COVER_PHOTO'; localId: string };
+  | { type: 'SET_COVER_PHOTO'; localId: string }
+  | { type: 'REORDER_PHOTOS'; from: number; to: number };
 
 const INITIAL_STATE: PostFormState = {
   // Default matches the type-picker's default selection ("Post"). The picker
@@ -473,21 +478,47 @@ function formReducer(state: PostFormState, action: PostFormAction): PostFormStat
       const removed = before.find((f) => f.localId === action.localId);
       const next = before.filter((f) => f.localId !== action.localId);
 
-      // Cover-photo invariant: if we just removed the covered photo and any
-      // photos remain, promote the first remaining to cover so the submit
-      // mapper never sees a coverless photo list.
+      // Cover-photo invariant: if removing a cover leaves zero covers but
+      // photos remain, auto-promote the first so the gallery is never empty.
       if (action.kind === 'photo' && removed?.isCover && next.length > 0) {
-        const withCover = next.map((p, i) => ({ ...p, isCover: i === 0 }));
-        return { ...state, photos: withCover };
+        const stillHasCover = next.some((p) => p.isCover);
+        if (!stillHasCover) {
+          return { ...state, photos: next.map((p, i) => ({ ...p, isCover: i === 0 })) };
+        }
+        return { ...state, photos: next };
       }
       return { ...state, [slot]: next };
     }
 
-    case 'SET_COVER_PHOTO':
+    case 'SET_COVER_PHOTO': {
+      const target = state.photos.find((p) => p.localId === action.localId);
+      if (!target) return state;
+      if (target.isCover) {
+        // Toggle off — always allowed
+        return {
+          ...state,
+          photos: state.photos.map((p) =>
+            p.localId === action.localId ? { ...p, isCover: false } : p,
+          ),
+        };
+      }
+      // Toggle on — enforce max 3 cover photos
+      const coverCount = state.photos.filter((p) => p.isCover).length;
+      if (coverCount >= 3) return state;
       return {
         ...state,
-        photos: state.photos.map((p) => ({ ...p, isCover: p.localId === action.localId })),
+        photos: state.photos.map((p) =>
+          p.localId === action.localId ? { ...p, isCover: true } : p,
+        ),
       };
+    }
+
+    case 'REORDER_PHOTOS': {
+      const photos = [...state.photos];
+      const [moved] = photos.splice(action.from, 1);
+      if (moved !== undefined) photos.splice(action.to, 0, moved);
+      return { ...state, photos };
+    }
 
     default:
       return state;
@@ -683,8 +714,26 @@ function editorHasContent(doc: PostFormState['descriptionDoc']): boolean {
 
 function CreatePostViewInner({ editId }: { editId?: string }) {
   const navigate = useNavigate();
-  const { detail, classes, staff, students, session, groupsAssigned, customGroups, configs } =
-    useLoaderData<CreatePostLoaderData>();
+  const {
+    detail,
+    classes,
+    staff,
+    staffGroups,
+    students,
+    session,
+    groupsAssigned,
+    customGroups,
+    configs,
+  } = useLoaderData<CreatePostLoaderData>();
+  // Collapse the sidebar while creating/editing a post so the form and
+  // side-preview have maximum horizontal space. Restore on unmount.
+  const { setOpen: setSidebarOpen } = useSidebarContext();
+  useEffect(() => {
+    setSidebarOpen(false);
+    return () => setSidebarOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Gate the Schedule side of the split button on PG's flag. Missing flag ⇒
   // treat as off (silent fallback) so the UI never promises behaviour PG has
   // turned off for the school.
@@ -701,13 +750,10 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
   const scheduleWindow = parseScheduleWindow(configs.configs.schedule_window);
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  // Preview defaults to visible on desktop, hidden on mobile. Once the user
-  // toggles it we stop tracking the viewport — the toggle is sticky so
-  // resizing past the breakpoint doesn't clobber their choice.
-  const [showPreview, setShowPreview] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return window.matchMedia('(min-width: 1024px)').matches;
-  });
+  // Preview is always on by default — teachers benefit from seeing the
+  // live preview while composing. On mobile the CSS hides the side panel
+  // and shows the slide-in instead; the toggle lets them dismiss it.
+  const [showPreview, setShowPreview] = useState(true);
   // `submitted` lives until the browser unmounts us on navigate — that's what
   // debounces a rapid double-tap on the Post button without a setTimeout race.
   const [saveState, setSaveState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
@@ -868,10 +914,6 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
     setShowScheduleDialog(false);
     setSaveState('submitting');
     try {
-      // PGW only flips status to SCHEDULED via the dedicated `/drafts/schedule`
-      // endpoints — `createDraft`/`updateDraft` always leave the row as DRAFT
-      // regardless of payload. Dispatch by kind × new-vs-existing so the right
-      // PGW endpoint and HTTP method (POST for new, PUT for existing) is used.
       if (state.kind === 'form') {
         const draftPayload = { ...buildConsentFormPayload(state), scheduledSendAt };
         if (isEditing && editId?.startsWith('cf_')) {
@@ -963,33 +1005,32 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
             </h1>
           </div>
 
-          {/* Right: save-status + preview toggle + save draft + split button */}
+          {/* Right: save-status + preview toggle + schedule + post */}
           <div className="flex items-center gap-3">
             <SaveStatusTicker status={autoSave.status} lastSavedAt={autoSave.lastSavedAt} />
             <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
               {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
+            {scheduleEnabled && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!isFormValid || isSaving}
+                onClick={() => setShowScheduleDialog(true)}
+              >
+                <CalendarClock className="mr-1.5 h-4 w-4" />
+                Schedule
+              </Button>
+            )}
             <Button
-              variant="secondary"
+              variant="default"
               size="sm"
-              disabled={autoSave.status === 'saving'}
-              onClick={() => {
-                void autoSave.saveNow();
-              }}
-            >
-              {autoSave.status === 'saving' ? 'Saving…' : 'Save draft'}
-            </Button>
-            {/* Schedule action is gated on PG's `schedule_announcement_form_post`
-                flag. When disabled, `onSchedule` is left undefined so the
-                dropdown's "Schedule for later" entry still renders but
-                becomes a no-op — the consent-form path already round-trips
-                via `POST /consentForms/drafts` with `scheduledSendAt` set
-                (see `handleScheduleConfirm`). */}
-            <SplitPostButton
               disabled={!isFormValid || isSaving}
-              onPost={() => setShowSendDialog(true)}
-              onSchedule={scheduleEnabled ? () => setShowScheduleDialog(true) : undefined}
-            />
+              onClick={() => setShowSendDialog(true)}
+            >
+              <Send className="mr-1.5 h-4 w-4" />
+              Post
+            </Button>
             {uploadsPending && (
               <span className="text-xs text-muted-foreground">Attachments uploading…</span>
             )}
@@ -1030,13 +1071,17 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
               {/* Staff in charge */}
               <div className="space-y-1.5">
-                <Label>Staff in charge</Label>
-                <p className="text-sm text-muted-foreground">{staffHelperText(state.kind)}</p>
+                <Label>
+                  Staff in charge{' '}
+                  <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 <StaffSelector
                   value={state.selectedStaff}
                   onChange={(sel) => dispatch({ type: 'SET_STAFF', payload: sel })}
                   staff={staff}
+                  staffGroups={staffGroups}
                 />
+                <p className="text-sm text-muted-foreground">{staffHelperText(state.kind)}</p>
               </div>
 
               {/* Enquiry email */}
@@ -1047,24 +1092,15 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 <p className="text-sm text-muted-foreground">
                   Select the preferred email address to receive enquiries from parents.
                 </p>
-                <Select
+                <EnquiryEmailSelector
+                  emailOptions={emailOptions}
                   value={state.enquiryEmail ?? ''}
-                  onValueChange={(value) => {
+                  onChange={(email) => {
                     clearFieldError('enquiryEmail');
-                    dispatch({ type: 'SET_EMAIL', payload: value as string });
+                    dispatch({ type: 'SET_EMAIL', payload: email });
                   }}
-                >
-                  <SelectTrigger aria-invalid={fieldErrors.enquiryEmail ? true : undefined}>
-                    <SelectValue placeholder="Select or add an email..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {emailOptions.map((email) => (
-                      <SelectItem key={email} value={email}>
-                        {email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  aria-invalid={fieldErrors.enquiryEmail ? true : undefined}
+                />
                 {fieldErrors.enquiryEmail && (
                   <p role="alert" className="text-sm text-destructive">
                     {fieldErrors.enquiryEmail}
@@ -1115,17 +1151,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   <Label id="post-description-label">
                     Description <span className="text-destructive">*</span>
                   </Label>
-                  <span
-                    className={cn(
-                      'text-xs tabular-nums',
-                      state.description.length > 2000
-                        ? 'font-medium text-info-foreground'
-                        : 'text-muted-foreground',
-                    )}
-                  >
-                    {state.description.length > 2000
-                      ? `Exceeded by ${state.description.length - 2000} characters`
-                      : `${state.description.length}/2000`}
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {state.description.length}/2000
                   </span>
                 </div>
                 <RichTextEditor
@@ -1148,16 +1175,20 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 )}
               </div>
 
-              {/* Attachments */}
-              <AttachmentSection
-                files={state.attachments}
-                photos={state.photos}
-                dispatch={dispatch}
-                kind={state.kind === 'announcement' ? 'ANNOUNCEMENT' : 'CONSENT_FORM'}
-              />
+              {/* Event schedule and venue — right after description, consent-form only. */}
+              {selectedType === 'post-with-response' && (
+                <>
+                  <EventScheduleSection
+                    value={state.event}
+                    onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
+                  />
 
-              {/* Website links — available on both kinds. */}
-              <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
+                  <VenueSection
+                    value={state.venue}
+                    onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
+                  />
+                </>
+              )}
 
               {/* Shortcuts — per-key flag-gated. Renders null when both
                   shortcuts are gated off, so there's no empty subsection. */}
@@ -1166,6 +1197,17 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 onChange={(next) => dispatch({ type: 'SET_SHORTCUTS', payload: next })}
                 declareTravelsEnabled={declareTravelsEnabled}
                 editContactEnabled={editContactEnabled}
+              />
+
+              {/* Website links — available on both kinds. */}
+              <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
+
+              {/* Attachments */}
+              <AttachmentSection
+                files={state.attachments}
+                photos={state.photos}
+                dispatch={dispatch}
+                kind={state.kind === 'announcement' ? 'ANNOUNCEMENT' : 'CONSENT_FORM'}
               />
             </CardContent>
           </Card>
@@ -1187,61 +1229,57 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   value={state.responseType}
                   onChange={(value) => dispatch({ type: 'SET_RESPONSE_TYPE', payload: value })}
                   hideViewOnly
-                >
-                  <div className="mt-6 space-y-6">
-                    <DueDateSection
-                      value={state.dueDate}
-                      onChange={(value) => dispatch({ type: 'SET_DUE_DATE', payload: value })}
-                      required
-                    />
+                />
 
-                    <ReminderSection
-                      value={state.reminder}
-                      onChange={(value) => dispatch({ type: 'SET_REMINDER', payload: value })}
-                      consentByDate={state.dueDate}
-                    />
-
-                    <EventScheduleSection
-                      value={state.event}
-                      onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
-                    />
-
-                    <VenueSection
-                      value={state.venue}
-                      onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
-                    />
+                {/* Questions — Yes/No only */}
+                {state.responseType === 'yes-no' && (
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                          Questions
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Custom questions (optional). You may add up to {MAX_QUESTIONS} questions.
+                        </p>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={state.questions.length >= MAX_QUESTIONS}
+                        onClick={() => dispatch({ type: 'ADD_QUESTION' })}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add a Question
+                      </Button>
+                    </div>
+                    <QuestionBuilder questions={state.questions} dispatch={dispatch} />
                   </div>
-                </ResponseTypeSelector>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* QUESTIONS Card (only for post-with-response, after a response type is picked) */}
+          {/* DUE DATE & REMINDER Card — separate section below Response Type */}
           {selectedType === 'post-with-response' &&
             (state.responseType === 'acknowledge' || state.responseType === 'yes-no') && (
               <Card>
                 <CardContent className="space-y-5 p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                        Questions
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Custom questions (optional). You may add up to {MAX_QUESTIONS} questions.
-                      </p>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={state.questions.length >= MAX_QUESTIONS}
-                      onClick={() => dispatch({ type: 'ADD_QUESTION' })}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add a Question
-                    </Button>
-                  </div>
+                  <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                    Due Date &amp; Reminder
+                  </p>
 
-                  <QuestionBuilder questions={state.questions} dispatch={dispatch} />
+                  <DueDateSection
+                    value={state.dueDate}
+                    onChange={(value) => dispatch({ type: 'SET_DUE_DATE', payload: value })}
+                    required
+                  />
+
+                  <ReminderSection
+                    value={state.reminder}
+                    onChange={(value) => dispatch({ type: 'SET_REMINDER', payload: value })}
+                    consentByDate={state.dueDate}
+                  />
                 </CardContent>
               </Card>
             )}
@@ -1255,9 +1293,6 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   <p className="text-base font-medium">Preview</p>
                   <p className="text-xs text-muted-foreground">As seen by parents</p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  This is how parents will see your announcement on the Parents Gateway App.
-                </p>
                 <PostPreview
                   formState={deferredState}
                   currentUserName={session.staffName ?? 'Daniel Tan'}

@@ -4,6 +4,7 @@ import {
   ArrowUp,
   CalendarClock,
   ChevronLeft,
+  ChevronRight,
   ExternalLink,
   FileText,
   ImageIcon,
@@ -11,14 +12,15 @@ import {
   MoreHorizontal,
   User,
   Users,
+  ZoomIn,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
-import { Button } from '~/components/ui';
 import type { PostFormState, UploadingFile } from '~/containers/CreatePostView';
 import { formatFileSize } from '~/helpers/attachments';
 import { formatDateTime, formatLocalDate, formatLocalDateTimeRange } from '~/helpers/dateTime';
 import { createRichTextExtensions, extractTextFromTiptap } from '~/helpers/tiptap';
+import { cn } from '~/lib/utils';
 
 import { summariseRecipients } from './summarise-recipients';
 
@@ -71,13 +73,13 @@ const PostPreview = React.memo(function PostPreview({
   }, [descriptionDoc]);
   const hasContent = Boolean(title || description);
   const dimmedWhenEmpty = hasContent ? 'text-foreground' : 'text-muted-foreground/60';
+  // Show the user's selection if set; fall back to the school's default so
+  // the preview doesn't leak a real email before one is chosen.
   const enquiryContact = enquiryEmail || defaultEnquiryEmail;
 
   const isForm = kind === 'form';
-  const titlePlaceholder = isForm ? 'Consent form title' : 'Announcement title';
-  const descriptionPlaceholder = isForm
-    ? 'Your consent form details will appear here.'
-    : 'Your announcement details will appear here.';
+  const titlePlaceholder = 'Title';
+  const descriptionPlaceholder = 'Your post details will appear here.';
 
   const eventRange = isForm
     ? formatLocalDateTimeRange(formState.event?.start, formState.event?.end)
@@ -95,8 +97,16 @@ const PostPreview = React.memo(function PostPreview({
   );
 
   const readyPhotos = useMemo(() => photos.filter((p) => p.status === 'ready'), [photos]);
-  const coverPhoto = readyPhotos.find((p) => p.isCover) ?? readyPhotos[0];
-  const otherPhotos = readyPhotos.filter((p) => p !== coverPhoto);
+  // Hero photo = first cover-marked photo, or first ready photo as fallback.
+  const heroPhoto = useMemo(() => {
+    const cover = readyPhotos.find((p) => p.isCover);
+    return cover ?? readyPhotos[0] ?? null;
+  }, [readyPhotos]);
+
+  // Gallery state — lives in the PostPreview component so it resets on unmount.
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+
   const readyAttachments = useMemo(
     () => attachments.filter((a) => a.status === 'ready'),
     [attachments],
@@ -109,9 +119,10 @@ const PostPreview = React.memo(function PostPreview({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded-3xl border-2 border-foreground bg-white">
-        {/* Mobile chrome */}
-        <div className="flex items-center justify-between px-4 py-3">
+      {/* relative so chrome overlay and gallery can use absolute positioning */}
+      <div className="relative flex h-[580px] flex-col overflow-hidden rounded-[1.75rem] border-[7px] border-[#1a1f2e] bg-white">
+        {/* Mobile chrome — always a frosted white bar so icons stay readable over any content */}
+        <div className="absolute inset-x-0 top-0 z-10 flex shrink-0 items-center justify-between rounded-t-[1.3rem] bg-white/85 px-4 py-2.5 backdrop-blur-md">
           <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
           <div className="flex items-center gap-3 text-foreground">
             <ArrowUp className="h-4 w-4" strokeWidth={2} />
@@ -120,184 +131,299 @@ const PostPreview = React.memo(function PostPreview({
           </div>
         </div>
 
-        <div className="flex min-h-[340px] flex-col px-5 pb-5">
-          <div className="space-y-1">
-            <p className={`text-lg leading-tight font-semibold ${dimmedWhenEmpty}`}>
-              {title || titlePlaceholder}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {timestamp} · {currentUserName.toUpperCase()}
-            </p>
-          </div>
-
-          <div
-            className={`mt-3 flex items-center gap-1.5 text-[11px] font-medium tracking-wider uppercase ${
-              recipientSummary ? 'text-foreground' : 'text-muted-foreground'
-            }`}
-          >
-            <User className="h-3 w-3" strokeWidth={2.25} />
-            {recipientSummary ?? 'STUDENT NAME'}
-          </div>
-
-          {/* Cover photo + gallery */}
-          {coverPhoto && (
-            <div className="mt-4 space-y-1.5">
-              <PreviewPhoto photo={coverPhoto} large />
-              {otherPhotos.length > 0 && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {otherPhotos.map((p) => (
-                    <PreviewPhoto key={p.localId} photo={p} />
-                  ))}
+        {/* pt-10 reserves space for the absolute chrome bar when there's no hero photo overlay */}
+        <div className={cn('flex flex-1 flex-col overflow-y-auto', !heroPhoto && 'pt-10')}>
+          {/* Hero photo — full width, overlapped by chrome above, click to open gallery */}
+          {heroPhoto && (
+            <button
+              type="button"
+              className="group relative shrink-0 cursor-pointer overflow-hidden border-0 p-0"
+              onClick={() => {
+                setGalleryOpen(true);
+                setGalleryIndex(0);
+              }}
+              aria-label="Open photo gallery"
+            >
+              <PreviewPhoto photo={heroPhoto} large />
+              {/* Badge: bottom-right, zoom-in icon + count */}
+              {readyPhotos.length > 1 && (
+                <div className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-[13px] font-semibold text-white backdrop-blur-sm">
+                  <ZoomIn className="h-4 w-4" strokeWidth={2} />
+                  {readyPhotos.length} photos
                 </div>
               )}
-            </div>
+            </button>
           )}
 
-          {isForm && (eventRange || venue) && (
-            <div className="mt-4 space-y-1.5 rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-foreground">
-              {eventRange && (
-                <div className="flex items-start gap-2">
-                  <CalendarClock
-                    className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
-                    strokeWidth={2}
-                  />
-                  <span>{eventRange}</span>
-                </div>
-              )}
-              {venue && (
-                <div className="flex items-start gap-2">
-                  <MapPin
-                    className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
-                    strokeWidth={2}
-                  />
-                  <span>{venue}</span>
-                </div>
-              )}
+          {/* Padded content below the photo */}
+          <div className="flex flex-1 flex-col px-5 pb-5">
+            <div className="space-y-0.5 pt-4">
+              <p className={`text-lg leading-tight font-semibold ${dimmedWhenEmpty}`}>
+                {title || titlePlaceholder}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {timestamp} · {currentUserName.toUpperCase()}
+              </p>
             </div>
-          )}
 
-          <div className="mt-5 space-y-2">
-            <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-              Details
-            </p>
-            {descriptionHtml ? (
-              <div
-                className="rich-content"
-                // `generateHTML` serializes a trusted Tiptap schema; Link is
-                // constrained to http/https/mailto via createRichTextExtensions.
-                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-              />
-            ) : description ? (
-              <p className="text-sm whitespace-pre-wrap text-foreground">{description}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground/60">{descriptionPlaceholder}</p>
+            <div
+              className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium tracking-wider uppercase ${
+                recipientSummary ? 'text-foreground' : 'text-muted-foreground/60'
+              }`}
+            >
+              <User className="h-3 w-3" strokeWidth={2.25} />
+              {recipientSummary ?? 'STUDENT NAME'}
+            </div>
+
+            {/* Venue + event range — inline rows directly under student name, matching PG app */}
+            {isForm && venue && (
+              <div className="mt-1 flex items-start gap-1.5 text-[11px] text-foreground">
+                <MapPin className="mt-px h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={2} />
+                <span>{venue}</span>
+              </div>
             )}
-          </div>
+            {isForm && eventRange && (
+              <div className="mt-1 flex items-start gap-1.5 text-[11px] font-medium text-primary">
+                <CalendarClock className="mt-px h-3 w-3 shrink-0 text-primary" strokeWidth={2} />
+                <span>{eventRange}</span>
+              </div>
+            )}
 
-          {/* File attachments */}
-          {readyAttachments.length > 0 && (
+            <div className="mt-4 border-t border-border/40" />
+
             <div className="mt-4 space-y-2">
               <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                Attachments
+                Details
               </p>
-              <ul className="space-y-1.5">
-                {readyAttachments.map((f) => (
-                  <li
-                    key={f.localId}
-                    className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-2 text-xs"
+              {descriptionHtml ? (
+                <div
+                  className="rich-content"
+                  // `generateHTML` serializes a trusted Tiptap schema; Link is
+                  // constrained to http/https/mailto via createRichTextExtensions.
+                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                />
+              ) : description ? (
+                <p className="text-sm whitespace-pre-wrap text-foreground">{description}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground/60">{descriptionPlaceholder}</p>
+              )}
+            </div>
+
+            {/* File attachments */}
+            {readyAttachments.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                  Attachments
+                </p>
+                <ul className="space-y-1.5">
+                  {readyAttachments.map((f) => (
+                    <li
+                      key={f.localId}
+                      className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-2 text-xs"
+                    >
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {formatFileSize(f.size)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Website links */}
+            {validLinks.length > 0 && (
+              <div className="mt-4 space-y-1.5">
+                <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                  Links
+                </p>
+                <ul className="space-y-1">
+                  {validLinks.map((link, i) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <li key={i} className="flex items-center gap-2 text-xs">
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate text-primary">
+                        {link.title.trim() || link.url.trim() || 'Untitled link'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {questions.length > 0 && (
+              <div className="mt-5 space-y-4 border-t pt-4">
+                {questions.map((q, i) => (
+                  <div key={q.id} className="space-y-2">
+                    {/* Question label */}
+                    <div>
+                      <p className="text-sm font-semibold">
+                        <span className="text-destructive">* </span>
+                        {i + 1}. {q.text || 'Untitled question'}
+                      </p>
+                      {q.description && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">{q.description}</p>
+                      )}
+                    </div>
+                    {/* MCQ options */}
+                    {q.type === 'mcq' && q.options.length > 0 && (
+                      <ul className="space-y-1.5">
+                        {q.options.map((opt, oi) => (
+                          <li
+                            key={oi}
+                            className="flex items-center gap-2.5 rounded-lg border bg-background px-3 py-2 text-xs"
+                          >
+                            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-muted-foreground/40" />
+                            <span className={opt ? 'text-foreground' : 'text-muted-foreground/50'}>
+                              {opt || `Option ${oi + 1}`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {/* Free-text answer area */}
+                    {q.type === 'free-text' && (
+                      <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground/60">
+                        Your answer here…
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Shortcut pills — parent-app action row */}
+            {enabledShortcuts.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-1.5">
+                {enabledShortcuts.map((key) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium text-foreground"
                   >
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="flex-1 truncate">{f.name}</span>
-                    <span className="shrink-0 text-muted-foreground">{formatFileSize(f.size)}</span>
-                  </li>
+                    {SHORTCUT_LABEL[key]}
+                  </span>
                 ))}
-              </ul>
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Website links */}
-          {validLinks.length > 0 && (
-            <div className="mt-4 space-y-1.5">
-              <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                Links
+            {/* Enquiry contact */}
+            <div className="mt-auto pt-6 text-center">
+              <p className="text-[11px] text-muted-foreground italic">
+                For enquiries on this post, please contact
               </p>
-              <ul className="space-y-1">
-                {validLinks.map((link, i) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <li key={i} className="flex items-center gap-2 text-xs">
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate text-primary">
-                      {link.title.trim() || link.url.trim() || 'Untitled link'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-[11px] text-primary italic">{enquiryContact}</p>
             </div>
-          )}
 
-          {questions.length > 0 && (
-            <div className="mt-5 space-y-3 border-t pt-4">
-              <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                Questions ({questions.length})
-              </p>
-              {questions.map((q, i) => (
-                <div key={q.id} className="space-y-1">
-                  <p className="text-sm font-medium">
-                    {i + 1}. {q.text || 'Untitled question'}
+            {/* Response section — bottom bar matching PG app layout */}
+            {isForm && (responseType === 'acknowledge' || responseType === 'yes-no') && (
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+                {/* Left: label + due date */}
+                <div className="min-w-0">
+                  <p className="text-[10px] text-muted-foreground">
+                    {responseType === 'acknowledge' ? 'Please acknowledge by' : 'Please respond by'}
                   </p>
-                  {q.type === 'mcq' && (
-                    <p className="text-xs text-muted-foreground">Multiple choice</p>
-                  )}
+                  <p className="text-xs font-semibold text-foreground">{dueDateLabel ?? '—'}</p>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {isForm && dueDateLabel && (
-            <p className="mt-4 text-[11px] font-medium text-muted-foreground">
-              Respond by {dueDateLabel}
-            </p>
-          )}
-
-          {/* Shortcut pills — parent-app action row */}
-          {enabledShortcuts.length > 0 && (
-            <div className="mt-5 flex flex-wrap gap-1.5">
-              {enabledShortcuts.map((key) => (
-                <span
-                  key={key}
-                  className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium text-foreground"
-                >
-                  {SHORTCUT_LABEL[key]}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {responseType === 'acknowledge' && (
-            <div className="mt-5">
-              <Button variant="secondary" size="sm" className="w-full" disabled>
-                Acknowledge
-              </Button>
-            </div>
-          )}
-          {responseType === 'yes-no' && (
-            <div className="mt-5 flex gap-2">
-              <Button variant="default" size="sm" className="flex-1" disabled>
-                Yes
-              </Button>
-              <Button variant="secondary" size="sm" className="flex-1" disabled>
-                No
-              </Button>
-            </div>
-          )}
-
-          <div className="mt-auto pt-8 text-center">
-            <p className="text-[11px] text-muted-foreground italic">
-              For enquiries on this post, please contact
-            </p>
-            <p className="text-[11px] text-muted-foreground italic">{enquiryContact}</p>
+                {/* Right: action buttons */}
+                {responseType === 'yes-no' && (
+                  <div className="flex shrink-0 gap-1.5">
+                    <button
+                      disabled
+                      className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      disabled
+                      className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-foreground"
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+                {responseType === 'acknowledge' && (
+                  <button
+                    disabled
+                    className="shrink-0 rounded-full bg-[#c9826b] px-4 py-1.5 text-[11px] font-medium text-white"
+                  >
+                    Acknowledge
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+          {/* /px-5 pb-5 */}
         </div>
+        {/* /overflow-y-auto */}
+
+        {/* ── Gallery overlay ─────────────────────────────────────────────── */}
+        {galleryOpen && readyPhotos.length > 0 && (
+          <div className="absolute inset-0 z-10 flex flex-col bg-black">
+            {/* Top bar */}
+            <div className="flex shrink-0 items-center px-3 pt-3 pb-2">
+              <button
+                type="button"
+                aria-label="Close gallery"
+                onClick={() => setGalleryOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:text-white"
+              >
+                <ChevronLeft className="h-5 w-5" strokeWidth={2} />
+              </button>
+              <span className="mx-auto text-sm font-medium text-white">
+                {galleryIndex + 1} / {readyPhotos.length}
+              </span>
+              {/* Balance spacer */}
+              <div className="h-8 w-8" />
+            </div>
+
+            {/* Image */}
+            <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+              <GalleryPhoto photo={readyPhotos[galleryIndex]!} />
+
+              {/* Prev */}
+              {galleryIndex > 0 && (
+                <button
+                  type="button"
+                  aria-label="Previous photo"
+                  onClick={() => setGalleryIndex((i) => i - 1)}
+                  className="absolute left-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+                >
+                  <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+                </button>
+              )}
+
+              {/* Next */}
+              {galleryIndex < readyPhotos.length - 1 && (
+                <button
+                  type="button"
+                  aria-label="Next photo"
+                  onClick={() => setGalleryIndex((i) => i + 1)}
+                  className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+                >
+                  <ChevronRight className="h-4 w-4" strokeWidth={2} />
+                </button>
+              )}
+            </div>
+
+            {/* Dots */}
+            <div className="flex shrink-0 items-center justify-center gap-1.5 py-5">
+              {readyPhotos.map((_, i) => (
+                <button
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={i}
+                  type="button"
+                  aria-label={`Go to photo ${i + 1}`}
+                  onClick={() => setGalleryIndex(i)}
+                  className={cn(
+                    'h-1.5 rounded-full bg-white transition-all duration-200',
+                    i === galleryIndex ? 'w-5 opacity-100' : 'w-1.5 opacity-40',
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Teacher-facing footer: staff-in-charge isn't shown in the parent app,
@@ -324,9 +450,6 @@ function PreviewPhoto({ photo, large = false }: { photo: UploadingFile; large?: 
   const [failed, setFailed] = useState(false);
   const src = photo.thumbnailUrl ?? photo.url;
 
-  // Reset the failure flag when the image source changes — otherwise a row
-  // that errored once, then later got a valid `thumbnailUrl` via an
-  // `UPDATE_UPLOAD` patch, would stay stuck on the fallback icon.
   React.useEffect(() => {
     setFailed(false);
   }, [src]);
@@ -334,9 +457,10 @@ function PreviewPhoto({ photo, large = false }: { photo: UploadingFile; large?: 
   if (failed || !src) {
     return (
       <div
-        className={`flex items-center justify-center rounded-lg bg-muted text-muted-foreground ${
-          large ? 'aspect-video w-full' : 'aspect-square'
-        }`}
+        className={cn(
+          'flex items-center justify-center bg-muted text-muted-foreground',
+          large ? 'aspect-video w-full' : 'aspect-square rounded-lg',
+        )}
       >
         <ImageIcon className="h-5 w-5" />
       </div>
@@ -349,7 +473,40 @@ function PreviewPhoto({ photo, large = false }: { photo: UploadingFile; large?: 
       alt={photo.name}
       loading="lazy"
       onError={() => setFailed(true)}
-      className={`rounded-lg object-cover ${large ? 'aspect-video w-full' : 'aspect-square w-full'}`}
+      // Hero variant: no rounding — the photo is edge-to-edge inside the phone frame.
+      className={cn(
+        'object-cover',
+        large ? 'aspect-video w-full' : 'aspect-square w-full rounded-lg',
+      )}
+    />
+  );
+}
+
+/** Full-size image for the gallery overlay. Renders with object-contain so the
+ *  photo is fully visible against the black background regardless of orientation. */
+function GalleryPhoto({ photo }: { photo: UploadingFile }) {
+  const [failed, setFailed] = useState(false);
+  const src = photo.thumbnailUrl ?? photo.url;
+
+  React.useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (failed || !src) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-white/30">
+        <ImageIcon className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={photo.name}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="max-h-full max-w-full object-contain"
     />
   );
 }

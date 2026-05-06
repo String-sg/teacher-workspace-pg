@@ -16,16 +16,19 @@ function PostTypePicker({ onSelect }: PostTypePickerProps) {
           className="cursor-pointer rounded-xl border p-6 text-left focus-standard transition-colors hover:border-primary hover:bg-primary/5"
           onClick={() => onSelect('post')}
         >
-          <div className="h-[100px] space-y-2.5">
-            <div className="h-2 w-3/4 rounded bg-accent" />
-            <div className="h-2 w-full rounded bg-accent" />
-            <div className="h-2 w-5/6 rounded bg-accent" />
-            <div className="h-2 w-2/3 rounded bg-accent" />
+          <div className="rounded-lg bg-muted/60 p-4">
+            <div className="space-y-2">
+              <div className="h-2.5 w-3/5 rounded-full bg-foreground/15" />
+              <div className="h-2.5 w-full rounded-full bg-foreground/15" />
+              <div className="h-2.5 w-4/6 rounded-full bg-foreground/15" />
+              <div className="h-2.5 w-3/5 rounded-full bg-foreground/15" />
+              <div className="h-2.5 w-full rounded-full bg-foreground/15" />
+            </div>
           </div>
 
-          <p className="mt-4 font-medium">Post</p>
+          <p className="mt-4 font-medium">View only</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Send a post to parents. They can read it on Parents Gateway.
+            Parents receive and read your post on Parents Gateway.
           </p>
         </button>
 
@@ -34,16 +37,20 @@ function PostTypePicker({ onSelect }: PostTypePickerProps) {
           className="cursor-pointer rounded-xl border p-6 text-left focus-standard transition-colors hover:border-primary hover:bg-primary/5"
           onClick={() => onSelect('post-with-response')}
         >
-          <div className="h-[100px] space-y-2.5">
-            <div className="h-2 w-3/4 rounded bg-accent" />
-            <div className="h-2 w-full rounded bg-accent" />
-            <div className="mt-3 h-2.5 w-1/2 rounded bg-primary/40" />
-            <div className="h-2 w-2/3 rounded bg-accent" />
+          <div className="rounded-lg bg-muted/60 p-4">
+            <div className="space-y-2">
+              <div className="h-2.5 w-3/5 rounded-full bg-foreground/15" />
+              <div className="h-2.5 w-full rounded-full bg-foreground/15" />
+              <div className="h-2.5 w-4/6 rounded-full bg-foreground/15" />
+            </div>
+            <div className="mt-3 flex w-full items-center justify-center rounded-md bg-primary/70 py-2">
+              <div className="h-2 w-16 rounded-full bg-white/40" />
+            </div>
           </div>
 
-          <p className="mt-4 font-medium">Post with Response</p>
+          <p className="mt-4 font-medium">With responses</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Send a post and collect responses from parents.
+            Parents receive your post and submit a response on Parents Gateway.
           </p>
         </button>
       </div>

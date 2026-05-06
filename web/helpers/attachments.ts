@@ -1,10 +1,11 @@
 /**
- * Constants + pure validators for post attachment uploads. The PG contract
- * caps both files and photos at 3 per post, 5 MB per item — see
- * `docs/plans/2026-04-23-001-feat-file-attachments-plan.md` R1/R2.
+ * Constants + pure validators for post attachment uploads.
+ * Files: up to 3 per post. Photos: up to 12 per post. Both capped at 5 MB each.
+ * See `docs/plans/2026-04-23-001-feat-file-attachments-plan.md` R1/R2.
  */
 
-export const MAX_ITEMS = 3;
+export const MAX_FILE_ITEMS = 3;
+export const MAX_PHOTO_ITEMS = 12;
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 /** Documents: PDF + the modern + legacy Microsoft Office MIME types. */
@@ -35,8 +36,12 @@ export function validateUploadFile(
   kind: UploadKind,
   existingCount: number,
 ): ValidationResult {
-  if (existingCount >= MAX_ITEMS) {
-    return { ok: false, reason: `You can attach up to ${MAX_ITEMS} items.` };
+  const maxItems = kind === 'file' ? MAX_FILE_ITEMS : MAX_PHOTO_ITEMS;
+  if (existingCount >= maxItems) {
+    return {
+      ok: false,
+      reason: `You can attach up to ${maxItems} ${kind === 'file' ? 'files' : 'photos'}.`,
+    };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return { ok: false, reason: 'File exceeds 5 MB.' };

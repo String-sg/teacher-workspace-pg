@@ -4,8 +4,9 @@ import {
   ALLOWED_FILE_MIME,
   ALLOWED_PHOTO_MIME,
   formatFileSize,
+  MAX_FILE_ITEMS,
   MAX_FILE_SIZE_BYTES,
-  MAX_ITEMS,
+  MAX_PHOTO_ITEMS,
   validateUploadFile,
 } from './attachments';
 
@@ -39,11 +40,18 @@ describe('validateUploadFile', () => {
     if (!result.ok) expect(result.reason).toMatch(/5 MB/);
   });
 
-  it('rejects when count already at MAX_ITEMS (count check runs before size/mime)', () => {
+  it('rejects files when count already at MAX_FILE_ITEMS (count check runs before size/mime)', () => {
     const file = makeFile('application/octet-stream', MAX_FILE_SIZE_BYTES * 10);
-    const result = validateUploadFile(file, 'file', MAX_ITEMS);
+    const result = validateUploadFile(file, 'file', MAX_FILE_ITEMS);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toMatch(new RegExp(String(MAX_ITEMS)));
+    if (!result.ok) expect(result.reason).toMatch(new RegExp(String(MAX_FILE_ITEMS)));
+  });
+
+  it('rejects photos when count already at MAX_PHOTO_ITEMS', () => {
+    const file = makeFile('image/jpeg', 1024);
+    const result = validateUploadFile(file, 'photo', MAX_PHOTO_ITEMS);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(new RegExp(String(MAX_PHOTO_ITEMS)));
   });
 
   it('rejects an unsupported MIME type', () => {

@@ -19,7 +19,7 @@
     "className": "4A",
     "levelCode": "SEC4",
     "levelDescription": "SECONDARY 4",
-    "cca": []
+    "cca": ["CHOIR"]
   },
   {
     "studentId": 3,
@@ -30,7 +30,7 @@
     "className": "4A",
     "levelCode": "SEC4",
     "levelDescription": "SECONDARY 4",
-    "cca": ["CHOIR"]
+    "cca": ["BOXING"]
   },
   {
     "studentId": 4,
@@ -50,6 +50,182 @@
     "classSerialNo": "7",
     "classCode": "4A",
     "className": "4A",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 6,
+    "studentName": "RYAN LIM ZI YANG",
+    "uinFinNo": "T0412350F",
+    "classSerialNo": "2",
+    "classCode": "4B",
+    "className": "4B",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 7,
+    "studentName": "PRIYA NAIR SURESH",
+    "uinFinNo": "T0412351G",
+    "classSerialNo": "11",
+    "classCode": "4B",
+    "className": "4B",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 8,
+    "studentName": "MUHAMMAD HAFIZ BIN ROSLAN",
+    "uinFinNo": "T0412352H",
+    "classSerialNo": "14",
+    "classCode": "4B",
+    "className": "4B",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 9,
+    "studentName": "JESSICA TAN YI LIN",
+    "uinFinNo": "T0412353J",
+    "classSerialNo": "6",
+    "classCode": "4B",
+    "className": "4B",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["CHOIR"]
+  },
+  {
+    "studentId": 10,
+    "studentName": "KEVIN GOH BOON KIAT",
+    "uinFinNo": "T0412354K",
+    "classSerialNo": "9",
+    "classCode": "4B",
+    "className": "4B",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 11,
+    "studentName": "SARAH LEE JING YI",
+    "uinFinNo": "T0412355L",
+    "classSerialNo": "1",
+    "classCode": "4C",
+    "className": "4C",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 12,
+    "studentName": "ETHAN CHUA WEI MING",
+    "uinFinNo": "T0412356M",
+    "classSerialNo": "4",
+    "classCode": "4C",
+    "className": "4C",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BASKETBALL"]
+  },
+  {
+    "studentId": 13,
+    "studentName": "NURUL IZZAH BINTE HASSAN",
+    "uinFinNo": "T0412357N",
+    "classSerialNo": "10",
+    "classCode": "4C",
+    "className": "4C",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 14,
+    "studentName": "ALICIA PHUA JIA LING",
+    "uinFinNo": "T0412358P",
+    "classSerialNo": "12",
+    "classCode": "4C",
+    "className": "4C",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 15,
+    "studentName": "BRENDAN ONG JUN HAO",
+    "uinFinNo": "T0412359Q",
+    "classSerialNo": "13",
+    "classCode": "4C",
+    "className": "4C",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 16,
+    "studentName": "CHLOE WU XIN YI",
+    "uinFinNo": "T0412360R",
+    "classSerialNo": "16",
+    "classCode": "4A",
+    "className": "4A",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 17,
+    "studentName": "DEREK SOH MING YANG",
+    "uinFinNo": "T0412361S",
+    "classSerialNo": "17",
+    "classCode": "4B",
+    "className": "4B",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 18,
+    "studentName": "FELICIA YEO HUI LING",
+    "uinFinNo": "T0412362T",
+    "classSerialNo": "18",
+    "classCode": "4C",
+    "className": "4C",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["CHOIR"]
+  },
+  {
+    "studentId": 19,
+    "studentName": "GAVIN TAN YU XUAN",
+    "uinFinNo": "T0412363U",
+    "classSerialNo": "19",
+    "classCode": "4A",
+    "className": "4A",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BASKETBALL"]
+  },
+  {
+    "studentId": 20,
+    "studentName": "HANNAH LIM PEI YI",
+    "uinFinNo": "T0412364V",
+    "classSerialNo": "20",
+    "classCode": "4B",
+    "className": "4B",
+    "levelCode": "SEC4",
+    "levelDescription": "SECONDARY 4",
+    "cca": ["BOXING"]
+  },
+  {
+    "studentId": 21,
+    "studentName": "IVAN CHONG ZI HAN",
+    "uinFinNo": "T0412365W",
+    "classSerialNo": "21",
+    "classCode": "4C",
+    "className": "4C",
     "levelCode": "SEC4",
     "levelDescription": "SECONDARY 4",
     "cca": ["BOXING"]

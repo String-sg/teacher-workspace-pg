@@ -94,7 +94,7 @@ function formatTimePart(date: Date): string {
   const minute = date.getMinutes().toString().padStart(2, '0');
   const ampm = hour >= 12 ? 'pm' : 'am';
   hour = hour % 12 || 12;
-  return `${hour}:${minute} ${ampm}`;
+  return `${hour}:${minute}${ampm}`;
 }
 
 /**
@@ -108,9 +108,9 @@ export function formatLocalDate(local: string | undefined): string | undefined {
 
 /**
  * Format a naive-local datetime range (`YYYY-MM-DDTHH:MM` pair) for display.
- * Same-day ranges collapse to `"Mon, 1 Apr 2026 · 12:00 pm – 5:00 pm"`;
- * cross-day ranges render the start weekday/date/time and end weekday/date/time
- * separately. If `end` is missing, only the start is rendered.
+ * Output: `"12 May 2026, 2:00am – 14 May 2026, 2:30am"`.
+ * Same-day ranges collapse the repeated date: `"12 May 2026, 2:00am – 5:00pm"`.
+ * If `end` is missing, only the start is rendered.
  */
 export function formatLocalDateTimeRange(
   start: string | undefined,
@@ -119,16 +119,15 @@ export function formatLocalDateTimeRange(
   const s = parseLocalDateTime(start);
   if (!s) return undefined;
   const e = parseLocalDateTime(end);
+  if (!e) return `${formatDatePart(s)}, ${formatTimePart(s)}`;
   const sameDay =
-    e !== undefined &&
     s.getFullYear() === e.getFullYear() &&
     s.getMonth() === e.getMonth() &&
     s.getDate() === e.getDate();
-  if (!e) return `${formatDatePart(s, { weekday: true })} \u00b7 ${formatTimePart(s)}`;
   if (sameDay) {
-    return `${formatDatePart(s, { weekday: true })} \u00b7 ${formatTimePart(s)} \u2013 ${formatTimePart(e)}`;
+    return `${formatDatePart(s)}, ${formatTimePart(s)} \u2013 ${formatTimePart(e)}`;
   }
-  return `${formatDatePart(s, { weekday: true })}, ${formatTimePart(s)} \u2013 ${formatDatePart(e, { weekday: true })}, ${formatTimePart(e)}`;
+  return `${formatDatePart(s)}, ${formatTimePart(s)} \u2013 ${formatDatePart(e)}, ${formatTimePart(e)}`;
 }
 
 export function isLowReadRate(

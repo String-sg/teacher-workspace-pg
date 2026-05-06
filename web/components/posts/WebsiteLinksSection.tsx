@@ -41,7 +41,10 @@ function WebsiteLinksSection({ value, dispatch }: WebsiteLinksSectionProps) {
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm font-medium">Website links</p>
+        <p className="text-sm font-medium">
+          Website links{' '}
+          <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+        </p>
         <p className="text-sm text-muted-foreground">
           Up to {MAX_WEBSITE_LINKS} links will be shown below the description on the Parents Gateway
           App.

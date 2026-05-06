@@ -130,7 +130,7 @@ describe('formReducer — uploads', () => {
     expect(next.photos).toHaveLength(0);
   });
 
-  it('moves isCover to the targeted photo and unsets others', () => {
+  it('toggles isCover on without unsetting others (multi-cover)', () => {
     const state = {
       ...INITIAL_STATE,
       photos: [
@@ -139,7 +139,7 @@ describe('formReducer — uploads', () => {
       ],
     };
     const next = formReducer(state, { type: 'SET_COVER_PHOTO', localId: 'p2' });
-    expect(next.photos[0].isCover).toBe(false);
+    expect(next.photos[0].isCover).toBe(true);
     expect(next.photos[1].isCover).toBe(true);
   });
 });
