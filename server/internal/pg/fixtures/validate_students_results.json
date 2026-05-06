@@ -1,0 +1,48 @@
+{
+  "status": "success",
+  "data": {
+    "validStudents": [
+      {
+        "pgStudentId": 1,
+        "studentId": "T0412345A",
+        "studentName": "TAN XIAO MING",
+        "className": "4A",
+        "classCode": "4A",
+        "levelCode": "SEC4",
+        "levelCodeDescription": "SECONDARY 4",
+        "indexNumber": "15",
+        "cca": [{ "ccaId": 1, "ccaDescription": "BOXING" }]
+      },
+      {
+        "pgStudentId": 2,
+        "studentId": "T0412346B",
+        "studentName": "LEE WEI LIANG",
+        "className": "4A",
+        "classCode": "4A",
+        "levelCode": "SEC4",
+        "levelCodeDescription": "SECONDARY 4",
+        "indexNumber": "8",
+        "cca": [{ "ccaId": 2, "ccaDescription": "CHOIR" }]
+      },
+      {
+        "pgStudentId": 3,
+        "studentId": "T0412347C",
+        "studentName": "CAROL CHEN HUI",
+        "className": "4A",
+        "classCode": "4A",
+        "levelCode": "SEC4",
+        "levelCodeDescription": "SECONDARY 4",
+        "indexNumber": "3",
+        "cca": [{ "ccaId": 1, "ccaDescription": "BOXING" }]
+      }
+    ],
+    "invalidStudents": [
+      {
+        "studentId": "T9999999Z",
+        "message": "Student not found in school records",
+        "row": 4
+      }
+    ]
+  },
+  "error": null
+}
