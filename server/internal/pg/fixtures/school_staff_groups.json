@@ -1,0 +1,8 @@
+{
+  "level": [
+    { "id": "lvl-1", "label": "Primary 1", "count": 5 },
+    { "id": "lvl-2", "label": "Primary 2", "count": 4 },
+    { "id": "lvl-3", "label": "Primary 3", "count": 6 }
+  ],
+  "school": [{ "id": "sch-1", "label": "All Staff", "count": 15 }]
+}

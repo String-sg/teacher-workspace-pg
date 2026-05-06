@@ -144,7 +144,7 @@ export async function loader({
     params.id ? loadPostByKind(params.id, kindParam) : Promise.resolve(null),
     fetchSchoolClasses(),
     fetchSchoolStaff(),
-    fetchSchoolStaffGroups(),
+    fetchSchoolStaffGroups().catch(() => ({ level: [], school: [] }) as PGApiStaffGroups),
     fetchSchoolStudents(),
     fetchSession(),
     fetchGroupsAssigned(),
