@@ -12,7 +12,9 @@ function VenueSection({ value, onChange }: VenueSectionProps) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <Label htmlFor="event-venue">Venue</Label>
+        <Label htmlFor="event-venue">
+          Venue <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+        </Label>
         <span className="text-xs text-muted-foreground tabular-nums">
           {venue.length}/{MAX_VENUE_LENGTH}
         </span>

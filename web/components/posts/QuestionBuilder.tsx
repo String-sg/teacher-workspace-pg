@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, Plus, Trash2 } from 'lucide-react';
 
 import { Button, Input } from '~/components/ui';
 import type { PostFormAction } from '~/containers/CreatePostView';
@@ -16,9 +16,10 @@ interface QuestionBuilderProps {
 function QuestionBuilder({ questions, dispatch }: QuestionBuilderProps) {
   if (questions.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No questions added yet. Use &quot;Add a Question&quot; to create one.
-      </p>
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-6 text-center text-muted-foreground">
+        <HelpCircle className="h-6 w-6 opacity-40" />
+        <p className="text-sm">No questions added yet.</p>
+      </div>
     );
   }
 

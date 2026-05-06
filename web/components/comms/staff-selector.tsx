@@ -13,7 +13,7 @@ interface StaffSelectorProps {
 }
 
 export function StaffSelector({ value, onChange, staff, staffGroups }: StaffSelectorProps) {
-  const byName = new Map(staff.map((s) => [s.name, s]));
+  const byName = new Map(staff.map((s) => [s.name.toLowerCase(), s]));
 
   const individualItems: EntityItem[] = staff.map((s) => ({
     id: s.staffId.toString(),
@@ -31,7 +31,7 @@ export function StaffSelector({ value, onChange, staff, staffGroups }: StaffSele
     groupType: 'staff-group',
     memberNames: g.memberNames,
     memberDetails: g.memberNames?.map((name) => ({
-      id: byName.get(name)?.staffId.toString(),
+      id: byName.get(name.toLowerCase())?.staffId.toString(),
       name,
     })),
   }));
@@ -44,7 +44,7 @@ export function StaffSelector({ value, onChange, staff, staffGroups }: StaffSele
     groupType: 'staff-group',
     memberNames: g.memberNames,
     memberDetails: g.memberNames?.map((name) => ({
-      id: byName.get(name)?.staffId.toString(),
+      id: byName.get(name.toLowerCase())?.staffId.toString(),
       name,
     })),
   }));

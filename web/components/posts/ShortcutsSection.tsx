@@ -15,7 +15,6 @@ type ShortcutKey = (typeof SHORTCUT_KEYS)[keyof typeof SHORTCUT_KEYS];
 interface ShortcutItem {
   key: ShortcutKey;
   label: string;
-  description: string;
   /**
    * Whether this shortcut is allowed by PG's feature flags for the current
    * school. When false the checkbox is hidden — matches the plan's silent
@@ -49,13 +48,11 @@ function ShortcutsSection({
     {
       key: SHORTCUT_KEYS.TRAVEL_DECLARATION,
       label: 'Declare travels',
-      description: 'Add a link to the travel-declaration form in the Parents Gateway App.',
       available: declareTravelsEnabled,
     },
     {
       key: SHORTCUT_KEYS.EDIT_CONTACT_DETAILS,
       label: 'Edit contact details',
-      description: 'Let parents update their contact details from the Parents Gateway App.',
       // TODO: PG hasn't named a flag for this one. Until then we treat
       // it as always-on; container passes `true` via the loader. If PG
       // surfaces a flag (e.g. `edit_contact_details`), wire it here.
@@ -71,14 +68,11 @@ function ShortcutsSection({
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-sm font-medium">Shortcuts</p>
-        <p className="text-sm text-muted-foreground">
-          Add quick actions parents can tap from the Parents Gateway App.
-        </p>
-      </div>
+      <p className="text-sm font-medium">
+        Shortcuts <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+      </p>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {visible.map((item) => {
           const inputId = `shortcut-${item.key.toLowerCase()}`;
           const checked = value.includes(item.key);
@@ -86,7 +80,7 @@ function ShortcutsSection({
             <label
               key={item.key}
               htmlFor={inputId}
-              className="flex cursor-pointer items-start gap-3"
+              className="flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors hover:bg-muted/40"
             >
               <Checkbox
                 id={inputId}
@@ -96,14 +90,10 @@ function ShortcutsSection({
                   if (enabled && !checked) onChange([...value, item.key]);
                   else if (!enabled && checked) onChange(value.filter((k) => k !== item.key));
                 }}
-                className="mt-0.5"
               />
-              <div>
-                <Label htmlFor={inputId} className="cursor-pointer">
-                  {item.label}
-                </Label>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              </div>
+              <Label htmlFor={inputId} className="cursor-pointer">
+                {item.label}
+              </Label>
             </label>
           );
         })}

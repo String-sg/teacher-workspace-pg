@@ -16,9 +16,14 @@ const SidebarProvider: React.FC<SidebarProviderProps> = ({ children }) => {
     [isMobile],
   );
 
+  const setOpen = useCallback(
+    (open: boolean) => (isMobile ? setIsMobileOpen(open) : setIsOpen(open)),
+    [isMobile],
+  );
+
   const contextValue = useMemo(
-    () => ({ isOpen, isMobileOpen, isMobile, toggleSidebar }),
-    [isOpen, isMobileOpen, isMobile, toggleSidebar],
+    () => ({ isOpen, isMobileOpen, isMobile, toggleSidebar, setOpen }),
+    [isOpen, isMobileOpen, isMobile, toggleSidebar, setOpen],
   );
 
   return <SidebarContext.Provider value={contextValue}>{children}</SidebarContext.Provider>;

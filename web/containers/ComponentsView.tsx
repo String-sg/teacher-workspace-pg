@@ -561,7 +561,12 @@ const ComponentsView: React.FC = () => {
         <Subsection label="AttachmentSection">
           <Card size="sm" className="max-w-md">
             <CardContent>
-              <AttachmentSection />
+              <AttachmentSection
+                files={[]}
+                photos={[]}
+                dispatch={() => undefined}
+                kind="ANNOUNCEMENT"
+              />
             </CardContent>
           </Card>
         </Subsection>

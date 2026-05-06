@@ -1,20 +1,86 @@
 [
+  { "staffId": 1001, "name": "LEE SU YIN", "email": "leesy@schools.gov.sg", "className": "1A" },
+  { "staffId": 1002, "name": "GOH WEI TING", "email": "gohwt@schools.gov.sg", "className": "1B" },
+  { "staffId": 1003, "name": "ANITHA KUMAR", "email": "anithak@schools.gov.sg", "className": "1C" },
+  { "staffId": 1004, "name": "LOH JUN XIANG", "email": "lohjx@schools.gov.sg", "className": "1D" },
+  { "staffId": 1005, "name": "YEO CHING LING", "email": "yeocl@schools.gov.sg", "className": "2A" },
   {
-    "staffId": 1013,
-    "name": "TAN GUANG SHIN",
-    "email": "tangs@schools.gov.sg",
-    "className": "4A"
+    "staffId": 1006,
+    "name": "RAVI SUBRAMANIAM",
+    "email": "ravis@schools.gov.sg",
+    "className": "2B"
+  },
+  { "staffId": 1007, "name": "TAN MEI XIA", "email": "tanmx@schools.gov.sg", "className": "2C" },
+  { "staffId": 1008, "name": "CHEN JIAN WEI", "email": "chenjw@schools.gov.sg", "className": "2D" },
+  { "staffId": 1009, "name": "NG BOON KIAT", "email": "ngbk@schools.gov.sg", "className": "3A" },
+  { "staffId": 1010, "name": "SITI RAHIMAH", "email": "sitir@schools.gov.sg", "className": "3B" },
+  { "staffId": 1011, "name": "LIM JIA HUI", "email": "limjh@schools.gov.sg", "className": "3C" },
+  { "staffId": 1012, "name": "ONG TECK SENG", "email": "ongts@schools.gov.sg", "className": "3D" },
+  {
+    "staffId": 1016,
+    "name": "KAVITHA PILLAI",
+    "email": "kavithap@schools.gov.sg",
+    "className": "3E"
   },
   {
-    "staffId": 1014,
-    "name": "LEE KAH SENG",
-    "email": "leeks@schools.gov.sg",
-    "className": "4B"
+    "staffId": 1017,
+    "name": "WONG CHEE KEONG",
+    "email": "wongck@schools.gov.sg",
+    "className": "3F"
   },
+  { "staffId": 1013, "name": "TAN GUANG SHIN", "email": "tangs@schools.gov.sg", "className": "4A" },
+  { "staffId": 1014, "name": "LEE KAH SENG", "email": "leeks@schools.gov.sg", "className": "4B" },
   {
     "staffId": 1015,
     "name": "AHMAD BIN IBRAHIM",
     "email": "ahmadi@schools.gov.sg",
     "className": "4C"
+  },
+  {
+    "staffId": 1018,
+    "name": "CHAN WEI LIANG",
+    "email": "chanwl@schools.gov.sg",
+    "className": "4D"
+  },
+  { "staffId": 1019, "name": "HO SIEW LAN", "email": "hosl@schools.gov.sg", "className": null },
+  { "staffId": 1020, "name": "RAJESH KUMAR", "email": "rajeshk@schools.gov.sg", "className": null },
+  {
+    "staffId": 1021,
+    "name": "PATRICIA TAN",
+    "email": "patriciat@schools.gov.sg",
+    "className": null
+  },
+  {
+    "staffId": 1022,
+    "name": "FAIZAL HASSAN",
+    "email": "faizalh@schools.gov.sg",
+    "className": null
+  },
+  { "staffId": 1023, "name": "BRYAN LOH", "email": "bryanl@schools.gov.sg", "className": null },
+  { "staffId": 1024, "name": "NURUL AIN", "email": "nurulain@schools.gov.sg", "className": null },
+  { "staffId": 1025, "name": "DAVID CHUA", "email": "davidc@schools.gov.sg", "className": null },
+  { "staffId": 1026, "name": "YAP WEE KIAN", "email": "yapwk@schools.gov.sg", "className": null },
+  {
+    "staffId": 1027,
+    "name": "SURIANI BTE SALLEH",
+    "email": "surianis@schools.gov.sg",
+    "className": null
+  },
+  { "staffId": 1028, "name": "LOH CHEE BENG", "email": "lohcb@schools.gov.sg", "className": null },
+  { "staffId": 1029, "name": "JANE ONG", "email": "janeo@schools.gov.sg", "className": null },
+  { "staffId": 1030, "name": "HARISH NAIR", "email": "harishn@schools.gov.sg", "className": null },
+  { "staffId": 1031, "name": "TAN SOCK CHENG", "email": "tansc@schools.gov.sg", "className": null },
+  {
+    "staffId": 1032,
+    "name": "CHUA BENG HUAT",
+    "email": "chuabh@schools.gov.sg",
+    "className": null
+  },
+  { "staffId": 1033, "name": "LIM GEOK HWA", "email": "limgh@schools.gov.sg", "className": null },
+  {
+    "staffId": 1034,
+    "name": "MOHD FADZIL",
+    "email": "mohdfadzil@schools.gov.sg",
+    "className": null
   }
 ]
