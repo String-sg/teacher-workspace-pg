@@ -16,6 +16,7 @@ import type {
   PGRecipient,
   PGStatus,
   PGTargetType,
+  PGUploadedFile,
   ReminderConfig,
   ResponseType,
 } from '~/data/mock-pg-announcements';
@@ -232,8 +233,8 @@ export function mapAnnouncementDetail(detail: PGApiAnnouncementDetail): PGAnnoun
       .filter((t): t is PGAnnouncementTarget => t !== null),
     enquiryEmail: detail.enquiryEmailAddress,
     websiteLinks: links.map((l) => ({ url: l.url, title: l.title })),
-    attachments: rehydrateAttachments(detail.attachments),
-    photos: rehydratePhotos(detail.images),
+    attachments: rehydrateAttachments(detail.attachments) as PGUploadedFile[],
+    photos: rehydratePhotos(detail.images) as PGUploadedFile[],
   };
 }
 
@@ -516,8 +517,8 @@ export function mapConsentFormDetail(detail: PGApiConsentFormDetail): PGConsentF
     event,
     history,
     websiteLinks: (detail.webLinkList ?? []).map((l) => ({ url: l.url, title: l.title })),
-    attachments: rehydrateAttachments(detail.attachments),
-    photos: rehydratePhotos(detail.images),
+    attachments: rehydrateAttachments(detail.attachments) as PGUploadedFile[],
+    photos: rehydratePhotos(detail.images) as PGUploadedFile[],
   };
 }
 

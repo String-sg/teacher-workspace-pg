@@ -124,7 +124,12 @@ export function EnquiryEmailSelector({
                 className="min-w-0 flex-1"
               />
               <span className="shrink-0 text-sm text-muted-foreground">@</span>
-              <Select value={customDomain} onValueChange={setCustomDomain}>
+              <Select
+                value={customDomain}
+                onValueChange={(v) => {
+                  if (v !== null) setCustomDomain(v);
+                }}
+              >
                 <SelectTrigger className="w-[10rem] shrink-0">
                   <SelectValue />
                 </SelectTrigger>

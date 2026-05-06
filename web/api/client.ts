@@ -433,7 +433,7 @@ export function createAnnouncement(payload: PGApiCreateAnnouncementPayload) {
 /** Save an announcement as draft. PGW allows partial data on drafts. */
 export function createDraft(
   payload: PGApiCreateDraftPayload,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<{ announcementDraftId: number }> {
   const body = {
     ...toPGCreatePayload(payload, { allowPartial: true }),

@@ -100,7 +100,7 @@ describe('CustomGroupDetailView', () => {
     fireEvent.click(detailsTab);
     expect(await screen.findByText(/created on/i)).toBeInTheDocument();
     expect(screen.getByText(/TAN GUANG SHIN/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /edit group/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /edit group/i })).toHaveAttribute(
       'href',
       '/groups/customGroups/5/edit',
     );

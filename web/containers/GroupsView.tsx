@@ -24,11 +24,9 @@ const GroupsView: React.FC = () => {
     <div className="px-4 py-6 md:px-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Groups</h1>
-        <Button asChild>
-          <Link to="/groups/customGroups/new">
-            <Plus className="size-4" aria-hidden />
-            Create custom group
-          </Link>
+        <Button render={<Link to="/groups/customGroups/new" />} nativeButton={false}>
+          <Plus className="size-4" aria-hidden />
+          Create custom group
         </Button>
       </div>
       <section className="mt-6">

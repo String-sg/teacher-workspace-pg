@@ -99,8 +99,13 @@ const CustomGroupDetailView: React.FC = () => {
             <div className="grid gap-3 sm:grid-cols-3">
               <article className="rounded-md border p-4">
                 <h3 className="font-semibold">Edit this custom group</h3>
-                <Button asChild variant="outline" className="mt-3">
-                  <Link to={`/groups/customGroups/${data.customGroupId}/edit`}>Edit Group</Link>
+                <Button
+                  variant="secondary"
+                  className="mt-3"
+                  render={<Link to={`/groups/customGroups/${data.customGroupId}/edit`} />}
+                  nativeButton={false}
+                >
+                  Edit Group
                 </Button>
               </article>
               <article className="rounded-md border p-4">
@@ -108,7 +113,7 @@ const CustomGroupDetailView: React.FC = () => {
                 <p className="mt-1 text-xs text-muted-foreground">
                   You will be granting access to edit this group. Please be certain.
                 </p>
-                <Button variant="outline" className="mt-3" onClick={() => setShareOpen(true)}>
+                <Button variant="secondary" className="mt-3" onClick={() => setShareOpen(true)}>
                   Share Group
                 </Button>
               </article>
@@ -118,7 +123,7 @@ const CustomGroupDetailView: React.FC = () => {
                   <p className="mt-1 text-xs text-muted-foreground">
                     Once you delete this custom group, you can never get it back again.
                   </p>
-                  <Button variant="outline" className="mt-3" onClick={() => setDeleteOpen(true)}>
+                  <Button variant="secondary" className="mt-3" onClick={() => setDeleteOpen(true)}>
                     Delete Forever
                   </Button>
                 </article>
@@ -128,7 +133,7 @@ const CustomGroupDetailView: React.FC = () => {
                   <p className="mt-1 text-xs text-muted-foreground">
                     You will lose access to this shared group. Other staff will still retain access.
                   </p>
-                  <Button variant="outline" className="mt-3" onClick={handleRemoveAccess}>
+                  <Button variant="secondary" className="mt-3" onClick={handleRemoveAccess}>
                     Remove Access
                   </Button>
                 </article>

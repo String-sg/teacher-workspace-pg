@@ -86,8 +86,8 @@ export function StudentRecipientSelector({
     const levelMeta = new Map<string, { count: number; firstClassId: number }>();
     for (const c of groupsAssigned.classes) {
       const existing = levelMeta.get(c.level);
-      if (existing) existing.count += c.studentCount;
-      else levelMeta.set(c.level, { count: c.studentCount, firstClassId: c.classId });
+      if (existing) existing.count += c.studentCount ?? 0;
+      else levelMeta.set(c.level, { count: c.studentCount ?? 0, firstClassId: c.classId });
     }
     return Array.from(levelMeta.entries()).map(([level, meta]) => {
       const roster = byLevel.get(level) ?? [];

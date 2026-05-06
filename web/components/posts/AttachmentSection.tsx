@@ -147,13 +147,8 @@ function FilesSubSection({
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium">Files</p>
           <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center text-muted-foreground/50 hover:text-muted-foreground"
-              >
-                <Info className="h-3.5 w-3.5" />
-              </button>
+            <PopoverTrigger className="flex items-center text-muted-foreground/50 hover:text-muted-foreground">
+              <Info className="h-3.5 w-3.5" />
             </PopoverTrigger>
             <PopoverContent side="right" sideOffset={6}>
               <PopoverHeader>
@@ -279,13 +274,8 @@ function PhotosSubSection({
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium">Photos</p>
           <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center text-muted-foreground/50 hover:text-muted-foreground"
-              >
-                <Info className="h-3.5 w-3.5" />
-              </button>
+            <PopoverTrigger className="flex items-center text-muted-foreground/50 hover:text-muted-foreground">
+              <Info className="h-3.5 w-3.5" />
             </PopoverTrigger>
             <PopoverContent side="right" sideOffset={6}>
               <PopoverHeader>

@@ -58,11 +58,8 @@ describe('CreateCustomGroupView', () => {
     const excel = await screen.findByRole('menuitem', { name: /upload via excel/i });
     expect(manual).not.toHaveAttribute('aria-disabled', 'true');
     expect(excel).toHaveAttribute('aria-disabled', 'true');
-    // The menuitem renders a Link — assert it points at the subpage.
-    expect(manual.querySelector('a')).toHaveAttribute(
-      'href',
-      '/groups/customGroups/new/addStudents',
-    );
+    // The menuitem IS the <a> tag (rendered via `render={<Link />}`) — assert it points at the subpage.
+    expect(manual).toHaveAttribute('href', '/groups/customGroups/new/addStudents');
   });
 
   it('clicking "Create Now" with a title and students POSTs and navigates to /groups/customGroups/:id', async () => {

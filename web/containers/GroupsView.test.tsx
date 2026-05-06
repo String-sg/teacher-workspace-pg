@@ -31,7 +31,7 @@ describe('GroupsView', () => {
 
   it('shows a "Create custom group" CTA that links to /groups/customGroups/new', async () => {
     renderAt();
-    const cta = await screen.findByRole('link', { name: /create custom group/i });
+    const cta = await screen.findByRole('button', { name: /create custom group/i });
     expect(cta).toHaveAttribute('href', '/groups/customGroups/new');
   });
 

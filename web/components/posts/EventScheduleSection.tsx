@@ -89,13 +89,13 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
   function handleStartDateChange(dateStr: string) {
     // Only update the date; keep existing time (or leave empty if none chosen yet).
     const start = startTime ? `${dateStr}T${startTime}` : dateStr;
-    onChange({ start, end: value?.end, venue: value?.venue });
+    onChange({ start, end: value?.end ?? '', venue: value?.venue });
   }
 
   function handleStartTimeChange(time: string) {
     if (!startDate) return; // date must be chosen first
     const start = `${startDate}T${time}`;
-    onChange({ start, end: value?.end, venue: value?.venue });
+    onChange({ start, end: value?.end ?? '', venue: value?.venue });
   }
 
   function handleEndDateChange(dateStr: string) {
@@ -151,7 +151,9 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
 
             <Select
               value={startTime || undefined}
-              onValueChange={handleStartTimeChange}
+              onValueChange={(v) => {
+                if (v !== null) handleStartTimeChange(v);
+              }}
               disabled={!startDate}
             >
               <SelectTrigger className="w-[120px]">
@@ -192,7 +194,9 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
 
             <Select
               value={endTime || undefined}
-              onValueChange={handleEndTimeChange}
+              onValueChange={(v) => {
+                if (v !== null) handleEndTimeChange(v);
+              }}
               disabled={!startDate}
             >
               <SelectTrigger className="w-[120px]">

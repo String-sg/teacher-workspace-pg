@@ -73,20 +73,24 @@ const CreateCustomGroupView: React.FC = () => {
                 {studentCount} student{studentCount === 1 ? '' : 's'} added.
               </p>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Plus className="size-4" aria-hidden />
-                    Add Students
-                  </Button>
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger
+                  render={
+                    <Button variant="secondary">
+                      <Plus className="size-4" aria-hidden />
+                      Add Students
+                    </Button>
+                  }
+                />
                 <DropdownMenuContent>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/groups/customGroups/new/addStudents"
-                      state={{ alreadyAdded: students.map((s) => s.studentId) }}
-                    >
-                      Add manually
-                    </Link>
+                  <DropdownMenuItem
+                    render={
+                      <Link
+                        to="/groups/customGroups/new/addStudents"
+                        state={{ alreadyAdded: students.map((s) => s.studentId) }}
+                      />
+                    }
+                  >
+                    Add manually
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled>Upload via Excel</DropdownMenuItem>
                 </DropdownMenuContent>
