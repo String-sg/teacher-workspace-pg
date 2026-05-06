@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp, HelpCircle, Plus, Trash2 } from 'lucide-react';
 
-import { Button, Input } from '~/components/ui';
+import { Button, Input, Textarea } from '~/components/ui';
 import type { PostFormAction } from '~/containers/CreatePostView';
 import type { FormQuestion } from '~/data/mock-pg-announcements';
 import { cn } from '~/lib/utils';
@@ -48,6 +48,20 @@ function QuestionBuilder({ questions, dispatch }: QuestionBuilderProps) {
                     type: 'UPDATE_QUESTION',
                     id: question.id,
                     payload: { text: e.target.value },
+                  })
+                }
+              />
+
+              <Textarea
+                placeholder="Helper text (optional)"
+                value={question.description ?? ''}
+                rows={2}
+                className="resize-none text-sm"
+                onChange={(e) =>
+                  dispatch({
+                    type: 'UPDATE_QUESTION',
+                    id: question.id,
+                    payload: { description: e.target.value || undefined },
                   })
                 }
               />

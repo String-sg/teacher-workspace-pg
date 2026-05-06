@@ -47,8 +47,8 @@ export interface PGWebsiteLink {
 export type FormQuestionType = 'free-text' | 'mcq';
 
 export type FormQuestion =
-  | { id: string; text: string; type: 'free-text' }
-  | { id: string; text: string; type: 'mcq'; options: [string, ...string[]] };
+  | { id: string; text: string; description?: string; type: 'free-text' }
+  | { id: string; text: string; description?: string; type: 'mcq'; options: [string, ...string[]] };
 
 export interface PGRecipient {
   studentId: string;
