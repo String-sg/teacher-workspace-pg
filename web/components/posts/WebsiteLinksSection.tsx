@@ -93,7 +93,7 @@ function WebsiteLinksSection({ value, dispatch }: WebsiteLinksSectionProps) {
                       type: 'UPDATE_WEBSITE_LINK',
                       index,
                       field: 'title',
-                      value: e.target.value,
+                      value: e.target.value.slice(0, MAX_LINK_DESCRIPTION_LENGTH),
                     })
                   }
                 />
