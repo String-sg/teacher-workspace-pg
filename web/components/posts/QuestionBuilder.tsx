@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, HelpCircle, Plus, Trash2 } from 'lucide-react';
 import { Button, Input } from '~/components/ui';
 import type { PostFormAction } from '~/containers/CreatePostView';
 import type { FormQuestion } from '~/data/mock-pg-announcements';
+import { cn } from '~/lib/utils';
 
 export const MAX_QUESTIONS = 5;
 const MIN_MCQ_OPTIONS = 2;
@@ -16,10 +17,20 @@ interface QuestionBuilderProps {
 function QuestionBuilder({ questions, dispatch }: QuestionBuilderProps) {
   if (questions.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-6 text-center text-muted-foreground">
+      <button
+        type="button"
+        onClick={() => dispatch({ type: 'ADD_QUESTION' })}
+        className={cn(
+          'flex w-full flex-col items-center gap-2 rounded-xl border border-dashed py-8 text-center text-muted-foreground',
+          'transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary',
+        )}
+      >
         <HelpCircle className="h-6 w-6 opacity-40" />
-        <p className="text-sm">No questions added yet.</p>
-      </div>
+        <div>
+          <p className="text-sm font-medium">No questions added yet</p>
+          <p className="mt-0.5 text-xs opacity-70">Click to add your first question</p>
+        </div>
+      </button>
     );
   }
 

@@ -3,7 +3,16 @@ import { useRef, useState, type Dispatch } from 'react';
 
 import type { AttachmentUploadType } from '~/api/client';
 import { uploadAttachment } from '~/api/client';
-import { Badge, Button, Popover, PopoverContent, PopoverTrigger } from '~/components/ui';
+import {
+  Badge,
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from '~/components/ui';
 import type { PostFormAction, UploadingFile } from '~/containers/CreatePostView';
 import {
   ALLOWED_FILE_MIME,
@@ -146,12 +155,14 @@ function FilesSubSection({
                 <Info className="h-3.5 w-3.5" />
               </button>
             </PopoverTrigger>
-            <PopoverContent side="right" className="w-auto p-3 text-xs leading-relaxed">
-              <p className="font-medium text-foreground">Accepted file types</p>
-              <p className="mt-1 text-muted-foreground">
-                PDF · Word (.docx) · Excel (.xlsx) · PowerPoint (.pptx)
-              </p>
-              <p className="mt-1 text-muted-foreground">Max 5 MB per file</p>
+            <PopoverContent side="right" sideOffset={6}>
+              <PopoverHeader>
+                <PopoverTitle>Accepted file types</PopoverTitle>
+                <PopoverDescription>
+                  PDF · Word (.docx) · Excel (.xlsx) · PowerPoint (.pptx)
+                </PopoverDescription>
+                <PopoverDescription>Max 5 MB per file</PopoverDescription>
+              </PopoverHeader>
             </PopoverContent>
           </Popover>
         </div>
@@ -276,10 +287,12 @@ function PhotosSubSection({
                 <Info className="h-3.5 w-3.5" />
               </button>
             </PopoverTrigger>
-            <PopoverContent side="right" className="w-auto p-3 text-xs leading-relaxed">
-              <p className="font-medium text-foreground">Accepted photo types</p>
-              <p className="mt-1 text-muted-foreground">JPEG · PNG · WebP</p>
-              <p className="mt-1 text-muted-foreground">Max 5 MB per photo</p>
+            <PopoverContent side="right" sideOffset={6}>
+              <PopoverHeader>
+                <PopoverTitle>Accepted photo types</PopoverTitle>
+                <PopoverDescription>JPEG · PNG · WebP</PopoverDescription>
+                <PopoverDescription>Max 5 MB per photo</PopoverDescription>
+              </PopoverHeader>
             </PopoverContent>
           </Popover>
         </div>
