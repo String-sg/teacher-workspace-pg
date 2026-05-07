@@ -233,30 +233,7 @@ const PostPreview = React.memo(function PostPreview({
               )}
             </div>
 
-            {/* File attachments */}
-            {readyAttachments.length > 0 && (
-              <div data-section="attachments" className="mt-4 space-y-2">
-                <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                  Attachments
-                </p>
-                <ul className="space-y-1.5">
-                  {readyAttachments.map((f) => (
-                    <li
-                      key={f.localId}
-                      className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-2 text-xs"
-                    >
-                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="flex-1 truncate">{f.name}</span>
-                      <span className="shrink-0 text-muted-foreground">
-                        {formatFileSize(f.size)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Shortcuts — full-width divider + tall button rows, matching PG app */}
+            {/* Shortcuts — divider + tall button rows with trailing chevron, matching PG app */}
             {enabledShortcuts.length > 0 && (
               <>
                 <div className="mt-4 border-t border-border/40" />
@@ -273,7 +250,8 @@ const PostPreview = React.memo(function PostPreview({
                           className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
                         >
                           <span className="text-lg leading-none">{meta.emoji}</span>
-                          <span className="text-sm">{meta.label}</span>
+                          <span className="flex-1 text-sm font-medium">{meta.label}</span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </li>
                       );
                     })}
@@ -282,13 +260,13 @@ const PostPreview = React.memo(function PostPreview({
               </>
             )}
 
-            {/* Website links — full-width divider + tall button rows, matching PG app */}
+            {/* Links — divider + tall button rows: title bold + URL below in blue */}
             {validLinks.length > 0 && (
               <>
                 <div className="mt-4 border-t border-border/40" />
                 <div data-section="links" className="mt-4 space-y-2.5">
                   <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                    Website Links
+                    Links
                   </p>
                   <ul className="space-y-2">
                     {validLinks.map((link, i) => (
@@ -298,9 +276,40 @@ const PostPreview = React.memo(function PostPreview({
                         className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
                       >
                         <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="truncate text-sm">
-                          {link.title.trim() || link.url.trim() || 'Untitled link'}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {link.title.trim() || link.url.trim() || 'Untitled link'}
+                          </p>
+                          {link.url.trim() && link.title.trim() && (
+                            <p className="truncate text-xs text-primary">{link.url.trim()}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            )}
+
+            {/* Attachments — divider + tall button rows: filename bold + size below */}
+            {readyAttachments.length > 0 && (
+              <>
+                <div className="mt-4 border-t border-border/40" />
+                <div data-section="attachments" className="mt-4 space-y-2.5">
+                  <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                    Attachments
+                  </p>
+                  <ul className="space-y-2">
+                    {readyAttachments.map((f) => (
+                      <li
+                        key={f.localId}
+                        className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
+                      >
+                        <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{f.name}</p>
+                          <p className="text-xs text-muted-foreground">{formatFileSize(f.size)}</p>
+                        </div>
                       </li>
                     ))}
                   </ul>
