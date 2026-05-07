@@ -28,11 +28,10 @@ import { summariseRecipients } from './summarise-recipients';
 // need a maxLength here (CharacterCount has no effect on static rendering).
 const RICH_TEXT_EXTENSIONS = createRichTextExtensions();
 
-/** Display labels for PG's shortcut enum keys. Kept local to the preview so
- *  ShortcutsSection stays the source of truth for the authoring side. */
-const SHORTCUT_LABEL: Record<string, string> = {
-  TRAVEL_DECLARATION: 'Declare travels',
-  EDIT_CONTACT_DETAILS: 'Edit contact details',
+/** Parent-facing display for each shortcut key — emoji + label matching the PG app. */
+const SHORTCUT_PREVIEW: Record<string, { emoji: string; label: string }> = {
+  TRAVEL_DECLARATION: { emoji: '✈️', label: 'Go to Travel Declaration' },
+  EDIT_CONTACT_DETAILS: { emoji: '🧑', label: 'Go to Contact Details' },
 };
 
 type PreviewFocusSection =
@@ -125,7 +124,7 @@ const PostPreview = React.memo(function PostPreview({
     () => websiteLinks.filter((l) => l.url.trim().length > 0 || l.title.trim().length > 0),
     [websiteLinks],
   );
-  const enabledShortcuts = shortcuts.filter((key) => SHORTCUT_LABEL[key]);
+  const enabledShortcuts = shortcuts.filter((key) => SHORTCUT_PREVIEW[key]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -257,24 +256,56 @@ const PostPreview = React.memo(function PostPreview({
               </div>
             )}
 
-            {/* Website links */}
+            {/* Shortcuts — full-width divider + tall button rows, matching PG app */}
+            {enabledShortcuts.length > 0 && (
+              <>
+                <div className="mt-4 border-t border-border/40" />
+                <div data-section="shortcuts" className="mt-4 space-y-2.5">
+                  <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                    Shortcuts
+                  </p>
+                  <ul className="space-y-2">
+                    {enabledShortcuts.map((key) => {
+                      const meta = SHORTCUT_PREVIEW[key]!;
+                      return (
+                        <li
+                          key={key}
+                          className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
+                        >
+                          <span className="text-lg leading-none">{meta.emoji}</span>
+                          <span className="text-sm">{meta.label}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </>
+            )}
+
+            {/* Website links — full-width divider + tall button rows, matching PG app */}
             {validLinks.length > 0 && (
-              <div data-section="links" className="mt-4 space-y-1.5">
-                <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                  Links
-                </p>
-                <ul className="space-y-1">
-                  {validLinks.map((link, i) => (
-                    // eslint-disable-next-line react/no-array-index-key
-                    <li key={i} className="flex items-center gap-2 text-xs">
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate text-primary">
-                        {link.title.trim() || link.url.trim() || 'Untitled link'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <>
+                <div className="mt-4 border-t border-border/40" />
+                <div data-section="links" className="mt-4 space-y-2.5">
+                  <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                    Website Links
+                  </p>
+                  <ul className="space-y-2">
+                    {validLinks.map((link, i) => (
+                      // eslint-disable-next-line react/no-array-index-key
+                      <li
+                        key={i}
+                        className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
+                      >
+                        <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate text-sm">
+                          {link.title.trim() || link.url.trim() || 'Untitled link'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
             )}
 
             {questions.length > 0 && (
@@ -314,20 +345,6 @@ const PostPreview = React.memo(function PostPreview({
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Shortcut pills — parent-app action row */}
-            {enabledShortcuts.length > 0 && (
-              <div className="mt-5 flex flex-wrap gap-1.5">
-                {enabledShortcuts.map((key) => (
-                  <span
-                    key={key}
-                    className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-medium text-foreground"
-                  >
-                    {SHORTCUT_LABEL[key]}
-                  </span>
                 ))}
               </div>
             )}
