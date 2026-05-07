@@ -277,24 +277,60 @@ export function mapAnnouncementDraftDetail(draft: PGApiAnnouncementDraft): PGAnn
 
 /**
  * Map a consent-form draft-detail response into the unified `PGConsentFormPost`
- * shape. Minimal mapping — populates title/richText/email/dueDate so the form
- * hydrates on reload. Recipients, staff, and attachments are left empty because
- * the `staffGroups`/`studentGroups` shape on the draft endpoint is not yet
- * documented (arrays were empty in observed samples). Extend as shapes become
- * verifiable. Mirrors `mapAnnouncementDraftDetail` in structure.
+ * shape. Hydrates all fields that PGW returns on the draft endpoint so the form
+ * reopens with every previously-saved field pre-filled.
  */
 export function mapConsentFormDraftDetail(draft: PGApiConsentFormDraft): PGConsentFormPost {
-  // richTextContent arrives as a JSON-encoded string on the draft endpoint
-  // (unlike the posted-form detail which can be an already-parsed object).
-  const richTextContent =
-    draft.richTextContent && typeof draft.richTextContent === 'string'
-      ? (JSON.parse(draft.richTextContent) as Record<string, unknown>)
-      : null;
+  // richTextContent arrives as a JSON-encoded string on real PGW; the mock
+  // fixture may supply it as an already-parsed object — handle both.
+  const richTextContent: Record<string, unknown> | null =
+    draft.richTextContent == null
+      ? null
+      : typeof draft.richTextContent === 'string'
+        ? (JSON.parse(draft.richTextContent) as Record<string, unknown>)
+        : (draft.richTextContent as Record<string, unknown>);
 
   const addReminderType: PGApiReminderType =
     draft.addReminderType === 'ONE_TIME' || draft.addReminderType === 'DAILY'
       ? draft.addReminderType
       : 'NONE';
+
+  // Event schedule — PGW returns `{ date, time }` objects.
+  const startDt = parseDraftDatetime(draft.eventStartDate);
+  const endDt = parseDraftDatetime(draft.eventEndDate);
+  const event: PGEvent | undefined =
+    startDt && endDt
+      ? { start: startDt, end: endDt, ...(draft.venue && { venue: draft.venue }) }
+      : undefined;
+
+  // Questions — PGW uses `customQuestions` on both draft and detail endpoints.
+  const rawQuestions = (draft.customQuestions ?? draft.questions ?? []) as {
+    questionId?: number;
+    text?: string;
+    type?: string;
+    options?: string[];
+  }[];
+  const questions = rawQuestions.map<PGConsentFormPost['questions'][number]>((q) =>
+    q.type === 'MCQ'
+      ? {
+          id: String(q.questionId ?? Math.random()),
+          text: q.text ?? '',
+          type: 'mcq',
+          options: (q.options?.length ? q.options : ['']) as [string, ...string[]],
+        }
+      : { id: String(q.questionId ?? Math.random()), text: q.text ?? '', type: 'free-text' },
+  );
+
+  // Website links — draft stores `{ webLink, linkDescription }` (write shape).
+  const websiteLinks = (
+    draft.urls as { webLink?: string; url?: string; linkDescription?: string; title?: string }[]
+  ).map((l) => ({
+    url: l.url ?? l.webLink ?? '',
+    title: l.title ?? l.linkDescription ?? '',
+  }));
+
+  // Staff in charge from staffOwners array (present on PGW draft responses).
+  const staffOwners = (draft.staffOwners ?? []) as { staffID: number; staffName: string }[];
 
   return {
     kind: 'form',
@@ -306,21 +342,31 @@ export function mapConsentFormDraftDetail(draft: PGApiConsentFormDraft): PGConse
     responseType: draft.responseType === 'YES_NO' ? 'yes-no' : 'acknowledge',
     ownership: 'mine',
     recipients: [],
-    stats: {
-      totalCount: 0,
-      yesCount: 0,
-      noCount: 0,
-      pendingCount: 0,
-    },
+    stats: { totalCount: 0, yesCount: 0, noCount: 0, pendingCount: 0 },
     createdAt: draft.updatedAt,
     createdBy: '',
     scheduledAt: draft.scheduledDateTime ?? undefined,
     enquiryEmail: draft.enquiryEmailAddress,
     consentByDate: draft.consentByDate ?? '',
     reminder: mapReminder(addReminderType, draft.reminderDate || null),
-    questions: [],
+    questions,
     history: [],
+    event,
+    websiteLinks,
+    shortcuts: (draft.shortcuts as string[]) ?? [],
+    staffOwnerIds: staffOwners.map((s) => s.staffID),
+    staffInCharge: staffOwners[0]?.staffName,
+    attachments: rehydrateAttachments(draft.attachments) as PGUploadedFile[],
+    photos: rehydratePhotos(
+      Array.isArray(draft.images) ? draft.images : draft.images.images,
+    ) as PGUploadedFile[],
   };
+}
+
+/** Parse a `{ date, time }` event date from PGW into a local `YYYY-MM-DDTHH:MM` string. */
+function parseDraftDatetime(raw: { date: string; time: string } | null | undefined): string | null {
+  if (!raw?.date) return null;
+  return `${raw.date}T${raw.time || '00:00'}`;
 }
 
 // Inbound `targetType` is sent lowercase by pgw-web (`class` | `group` | `cca` | `level`);

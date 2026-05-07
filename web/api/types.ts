@@ -172,7 +172,8 @@ export interface PGApiConsentFormDraft {
   postedConsentFormId: number | null;
   title: string;
   content: string | null;
-  richTextContent: string | null;
+  /** JSON-encoded string from real PGW; already-parsed object from mock. */
+  richTextContent: string | Record<string, unknown> | null;
   venue: string;
   eventStartDate: { date: string; time: string } | null;
   eventEndDate: { date: string; time: string } | null;
@@ -181,10 +182,14 @@ export interface PGApiConsentFormDraft {
   enquiryEmailAddress: string;
   consentByDate: string | null;
   responseType: 'ACKNOWLEDGEMENT' | 'YES_NO' | '';
-  questions: unknown[];
+  /** PGW returns questions as `customQuestions` on both draft and detail. */
+  customQuestions?: unknown[];
+  questions?: unknown[];
   staffGroups: unknown[];
   studentGroups: unknown[];
-  images: { images: unknown[]; imagesOrigin: string };
+  /** Staff in charge — present on draft responses from PGW. */
+  staffOwners?: { staffID: number; staffName: string }[];
+  images: { images: unknown[]; imagesOrigin: string } | unknown[];
   attachments: unknown[];
   urls: unknown[];
   shortcuts: unknown[];
