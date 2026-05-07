@@ -148,7 +148,7 @@ export async function loader({
     fetchSchoolStudents(),
     fetchSession(),
     fetchGroupsAssigned(),
-    fetchCustomGroups(),
+    fetchCustomGroups().catch(() => ({ customGroups: [] as PGApiCustomGroupSummary[] })),
     getConfigs(),
   ]);
   return {

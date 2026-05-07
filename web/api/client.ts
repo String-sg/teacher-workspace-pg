@@ -804,7 +804,9 @@ function mapPgwCustomGroup(raw: PgwRawCustomGroup): PGApiCustomGroupSummary {
 
 export async function fetchCustomGroups(): Promise<PGApiCustomGroupsList> {
   const raw = await fetchApi<PgwRawCustomGroup[]>('/groups/custom');
-  return { customGroups: raw.map(mapPgwCustomGroup) };
+  // Guard: real PGW returns a bare array; be defensive in case the shape differs.
+  const list = Array.isArray(raw) ? raw : [];
+  return { customGroups: list.map(mapPgwCustomGroup) };
 }
 
 interface PgwRawCustomGroupDetail {
