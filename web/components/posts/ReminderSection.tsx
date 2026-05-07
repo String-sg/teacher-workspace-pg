@@ -45,7 +45,7 @@ function ReminderSection({ value, onChange, consentByDate }: ReminderSectionProp
   }
 
   const showPicker = value.type === 'ONE_TIME' || value.type === 'DAILY';
-  const pickerLabel = value.type === 'DAILY' ? 'Starting (SGT)' : 'Date (SGT)';
+  const pickerLabel = value.type === 'DAILY' ? 'Starting' : 'Date';
   // Empty display on NONE so the hidden picker doesn't flash a stale date.
   const displayDate = value.type === 'NONE' ? '' : value.date;
 

@@ -754,6 +754,10 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
   // live preview while composing. On mobile the CSS hides the side panel
   // and shows the slide-in instead; the toggle lets them dismiss it.
   const [showPreview, setShowPreview] = useState(true);
+  // Track which section of the preview to scroll to as the teacher edits.
+  const [focusSection, setFocusSection] = useState<
+    'header' | 'content' | 'attachments' | 'links' | 'questions' | 'response'
+  >('header');
   // `submitted` lives until the browser unmounts us on navigate — that's what
   // debounces a rapid double-tap on the Post button without a setTimeout race.
   const [saveState, setSaveState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
@@ -1118,7 +1122,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
               </p>
 
               {/* Title with counter */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" onFocus={() => setFocusSection('header')}>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="post-title">
                     Title <span className="text-destructive">*</span>
@@ -1146,7 +1150,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
               </div>
 
               {/* Description with counter and toolbar */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" onFocus={() => setFocusSection('content')}>
                 <div className="flex items-center justify-between">
                   <Label id="post-description-label">
                     Description <span className="text-destructive">*</span>
@@ -1177,7 +1181,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
               {/* Event schedule and venue — right after description, consent-form only. */}
               {selectedType === 'post-with-response' && (
-                <>
+                <div className="space-y-5" onFocus={() => setFocusSection('header')}>
                   <EventScheduleSection
                     value={state.event}
                     onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
@@ -1187,7 +1191,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                     value={state.venue}
                     onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
                   />
-                </>
+                </div>
               )}
 
               {/* Shortcuts — per-key flag-gated. Renders null when both
@@ -1200,15 +1204,19 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
               />
 
               {/* Website links — available on both kinds. */}
-              <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
+              <div onFocus={() => setFocusSection('links')}>
+                <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
+              </div>
 
               {/* Attachments */}
-              <AttachmentSection
-                files={state.attachments}
-                photos={state.photos}
-                dispatch={dispatch}
-                kind={state.kind === 'announcement' ? 'ANNOUNCEMENT' : 'CONSENT_FORM'}
-              />
+              <div onFocus={() => setFocusSection('attachments')}>
+                <AttachmentSection
+                  files={state.attachments}
+                  photos={state.photos}
+                  dispatch={dispatch}
+                  kind={state.kind === 'announcement' ? 'ANNOUNCEMENT' : 'CONSENT_FORM'}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -1225,11 +1233,13 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   </p>
                 </div>
 
-                <ResponseTypeSelector
-                  value={state.responseType}
-                  onChange={(value) => dispatch({ type: 'SET_RESPONSE_TYPE', payload: value })}
-                  hideViewOnly
-                />
+                <div onFocus={() => setFocusSection('response')}>
+                  <ResponseTypeSelector
+                    value={state.responseType}
+                    onChange={(value) => dispatch({ type: 'SET_RESPONSE_TYPE', payload: value })}
+                    hideViewOnly
+                  />
+                </div>
 
                 {/* Questions — Yes/No only */}
                 {state.responseType === 'yes-no' && (
@@ -1253,7 +1263,9 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                         Add a Question
                       </Button>
                     </div>
-                    <QuestionBuilder questions={state.questions} dispatch={dispatch} />
+                    <div onFocus={() => setFocusSection('questions')}>
+                      <QuestionBuilder questions={state.questions} dispatch={dispatch} />
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -1269,11 +1281,13 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                     Due Date &amp; Reminder
                   </p>
 
-                  <DueDateSection
-                    value={state.dueDate}
-                    onChange={(value) => dispatch({ type: 'SET_DUE_DATE', payload: value })}
-                    required
-                  />
+                  <div onFocus={() => setFocusSection('response')}>
+                    <DueDateSection
+                      value={state.dueDate}
+                      onChange={(value) => dispatch({ type: 'SET_DUE_DATE', payload: value })}
+                      required
+                    />
+                  </div>
 
                   <ReminderSection
                     value={state.reminder}
@@ -1297,6 +1311,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   formState={deferredState}
                   currentUserName={session.staffName ?? 'Daniel Tan'}
                   defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
+                  focusSection={focusSection}
                 />
               </CardContent>
             </Card>

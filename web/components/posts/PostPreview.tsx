@@ -14,7 +14,7 @@ import {
   Users,
   ZoomIn,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PostFormState, UploadingFile } from '~/containers/CreatePostView';
 import { formatFileSize } from '~/helpers/attachments';
@@ -35,16 +35,26 @@ const SHORTCUT_LABEL: Record<string, string> = {
   EDIT_CONTACT_DETAILS: 'Edit contact details',
 };
 
+type PreviewFocusSection =
+  | 'header'
+  | 'content'
+  | 'attachments'
+  | 'links'
+  | 'questions'
+  | 'response';
+
 interface PostPreviewProps {
   formState: PostFormState;
   currentUserName?: string;
   defaultEnquiryEmail?: string;
+  focusSection?: PreviewFocusSection;
 }
 
 const PostPreview = React.memo(function PostPreview({
   formState,
   currentUserName = 'Daniel Tan',
   defaultEnquiryEmail = 'enquiry@school.edu.sg',
+  focusSection,
 }: PostPreviewProps) {
   const {
     kind,
@@ -117,12 +127,24 @@ const PostPreview = React.memo(function PostPreview({
   );
   const enabledShortcuts = shortcuts.filter((key) => SHORTCUT_LABEL[key]);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll the preview pane to the relevant section whenever the teacher's
+  // focus moves to a different part of the form.
+  useEffect(() => {
+    if (!focusSection || !scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    const target = container.querySelector<HTMLElement>(`[data-section="${focusSection}"]`);
+    if (!target) return;
+    container.scrollTo({ top: target.offsetTop - 8, behavior: 'smooth' });
+  }, [focusSection]);
+
   return (
     <div className="space-y-3">
       {/* relative so chrome overlay and gallery can use absolute positioning */}
       <div className="relative flex h-[580px] flex-col overflow-hidden rounded-[1.75rem] border-[7px] border-[#1a1f2e] bg-white">
         {/* Mobile chrome — always a frosted white bar so icons stay readable over any content */}
-        <div className="absolute inset-x-0 top-0 z-10 flex shrink-0 items-center justify-between rounded-t-[1.3rem] bg-white/85 px-4 py-2.5 backdrop-blur-md">
+        <div className="absolute inset-x-0 top-0 z-10 flex shrink-0 items-center justify-between rounded-t-[1.3rem] bg-white px-4 py-2.5">
           <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
           <div className="flex items-center gap-3 text-foreground">
             <ArrowUp className="h-4 w-4" strokeWidth={2} />
@@ -132,7 +154,10 @@ const PostPreview = React.memo(function PostPreview({
         </div>
 
         {/* pt-10 reserves space for the absolute chrome bar when there's no hero photo overlay */}
-        <div className={cn('flex flex-1 flex-col overflow-y-auto', !heroPhoto && 'pt-10')}>
+        <div
+          ref={scrollContainerRef}
+          className={cn('flex flex-1 flex-col overflow-y-auto', !heroPhoto && 'pt-10')}
+        >
           {/* Hero photo — full width, overlapped by chrome above, click to open gallery */}
           {heroPhoto && (
             <button
@@ -157,7 +182,7 @@ const PostPreview = React.memo(function PostPreview({
 
           {/* Padded content below the photo */}
           <div className="flex flex-1 flex-col px-5 pb-5">
-            <div className="space-y-0.5 pt-4">
+            <div data-section="header" className="space-y-0.5 pt-4">
               <p className={`text-lg leading-tight font-semibold ${dimmedWhenEmpty}`}>
                 {title || titlePlaceholder}
               </p>
@@ -191,7 +216,7 @@ const PostPreview = React.memo(function PostPreview({
 
             <div className="mt-4 border-t border-border/40" />
 
-            <div className="mt-4 space-y-2">
+            <div data-section="content" className="mt-4 space-y-2">
               <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
                 Details
               </p>
@@ -211,7 +236,7 @@ const PostPreview = React.memo(function PostPreview({
 
             {/* File attachments */}
             {readyAttachments.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div data-section="attachments" className="mt-4 space-y-2">
                 <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
                   Attachments
                 </p>
@@ -234,7 +259,7 @@ const PostPreview = React.memo(function PostPreview({
 
             {/* Website links */}
             {validLinks.length > 0 && (
-              <div className="mt-4 space-y-1.5">
+              <div data-section="links" className="mt-4 space-y-1.5">
                 <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
                   Links
                 </p>
@@ -253,7 +278,7 @@ const PostPreview = React.memo(function PostPreview({
             )}
 
             {questions.length > 0 && (
-              <div className="mt-5 space-y-4 border-t pt-4">
+              <div data-section="questions" className="mt-5 space-y-4 border-t pt-4">
                 {questions.map((q, i) => (
                   <div key={q.id} className="space-y-2">
                     {/* Question label */}
@@ -317,7 +342,10 @@ const PostPreview = React.memo(function PostPreview({
 
             {/* Response section — bottom bar matching PG app layout */}
             {isForm && (responseType === 'acknowledge' || responseType === 'yes-no') && (
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+              <div
+                data-section="response"
+                className="mt-4 flex items-center justify-between gap-3 border-t border-border/40 pt-3"
+              >
                 {/* Left: label + due date */}
                 <div className="min-w-0">
                   <p className="text-[10px] text-muted-foreground">

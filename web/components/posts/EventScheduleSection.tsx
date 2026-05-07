@@ -118,7 +118,7 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
     <div className="space-y-3">
       <div>
         <p className="text-sm font-medium">
-          Event Schedule{' '}
+          Event Details{' '}
           <span className="text-xs font-normal text-muted-foreground">(optional)</span>
         </p>
         <p className="text-sm text-muted-foreground">
@@ -129,7 +129,7 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
       <div className="grid gap-3 sm:grid-cols-2">
         {/* Start */}
         <div className="space-y-1.5">
-          <Label>Start (SGT)</Label>
+          <Label>Event Start</Label>
           <div className="flex flex-wrap gap-2">
             <Popover>
               <PopoverTrigger className={triggerClass}>
@@ -172,7 +172,7 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
 
         {/* End */}
         <div className="space-y-1.5">
-          <Label>End (SGT)</Label>
+          <Label>Event End</Label>
           <div className="flex flex-wrap gap-2">
             <Popover>
               <PopoverTrigger className={triggerClass} disabled={!startDate}>

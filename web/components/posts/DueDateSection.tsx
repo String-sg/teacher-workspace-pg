@@ -38,7 +38,7 @@ function DueDateSection({ value, onChange, required = false }: DueDateSectionPro
 
   return (
     <div className="space-y-1.5">
-      <Label>Due Date (SGT){required && <span className="text-destructive"> *</span>}</Label>
+      <Label>Due Date{required && <span className="text-destructive"> *</span>}</Label>
       <p className="text-sm text-muted-foreground">
         The latest date by which parents must respond.
       </p>
