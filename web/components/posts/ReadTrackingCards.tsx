@@ -240,8 +240,7 @@ function ConsentFormCard({
   // Yes/No: yesCount + noCount together make the responded count.
   const respondedCount =
     responseType === 'acknowledge' ? yesCount : Math.max(totalCount - pendingCount, 0);
-  const label =
-    responseType === 'acknowledge' ? 'Acknowledgements received' : 'Consent form responses';
+  const label = responseType === 'acknowledge' ? 'Acknowledgements received' : 'Post responses';
   const miniStats: MiniStat[] =
     responseType === 'yes-no'
       ? [
