@@ -1,7 +1,10 @@
 import { Bell, CalendarClock, CalendarDays, HelpCircle, MapPin, Paperclip } from 'lucide-react';
 
-import { Card, CardContent, Separator } from '~/components/ui';
-import type { PGPost, ReminderConfig } from '~/data/mock-pg-announcements';
+import type { PGApiSchoolStaff } from '~/api/types';
+import { StaffSelector } from '~/components/comms/staff-selector';
+import { EnquiryEmailSelector } from '~/components/posts/EnquiryEmailSelector';
+import { Badge, Card, CardContent, Separator } from '~/components/ui';
+import type { PGConsentFormPost, PGPost, ReminderConfig } from '~/data/mock-pg-announcements';
 import { formatDate, formatDateTime } from '~/helpers/dateTime';
 
 interface Attachment {
@@ -9,11 +12,38 @@ interface Attachment {
   sizeKb: number;
 }
 
+export interface PostCardEditState {
+  enquiryEmail: string;
+  staffOwnerIds: number[];
+  /** `YYYY-MM-DD` in SGT — only present when editing a consent form. */
+  consentByDate?: string;
+}
+
+/**
+ * Extract a `YYYY-MM-DD` string in the Asia/Singapore timezone from a UTC ISO
+ * timestamp (e.g. `"2026-03-30T15:59:59.000Z"` → `"2026-03-30"`).
+ * Returns `""` for missing or unparseable inputs.
+ */
+export function isoToSgtDate(iso: string | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+}
+
 interface PostCardProps {
   post: PGPost;
   /** Optional attachments — not yet carried by `PGPost`; wired from callers as needed. */
   attachments?: Attachment[];
   className?: string;
+  /** When true the enquiry email + staff-in-charge fields switch to editable selectors. */
+  isEditing?: boolean;
+  editState?: PostCardEditState;
+  onEditStateChange?: (patch: Partial<PostCardEditState>) => void;
+  /** School staff list — required when `isEditing` is true. */
+  staffList?: PGApiSchoolStaff[];
+  /** Preset email options for the enquiry email selector. */
+  emailOptions?: string[];
 }
 
 function formatSize(sizeKb: number) {
@@ -36,7 +66,16 @@ function reminderSummary(reminder: ReminderConfig): string | null {
  * render announcement- vs consent-form-specific metadata inline; the prop
  * surface stays `{ post }` so form-only fields don't leak onto the shared API.
  */
-export function PostCard({ post, attachments, className }: PostCardProps) {
+export function PostCard({
+  post,
+  attachments,
+  className,
+  isEditing = false,
+  editState,
+  onEditStateChange,
+  staffList = [],
+  emailOptions = [],
+}: PostCardProps) {
   const isForm = post.kind === 'form';
   const kindLabel = isForm ? 'Consent form' : 'Announcement';
 
@@ -67,6 +106,23 @@ export function PostCard({ post, attachments, className }: PostCardProps) {
             {post.description}
           </p>
         </div>
+
+        {/* ── Sent to ─────────────────────────────────────────────────────── */}
+        {post.targets && post.targets.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Sent to</p>
+              <div className="flex flex-wrap gap-1.5">
+                {post.targets.map((t) => (
+                  <Badge key={t.id} variant="outline">
+                    {t.label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {isForm && (eventStart || venue || dueDate || reminder || defaultReminderDate) && (
           <>
@@ -150,6 +206,11 @@ export function PostCard({ post, attachments, className }: PostCardProps) {
             <Separator />
             <div className="space-y-2">
               <p className="text-sm font-medium">Attachments</p>
+              {/* File expiry notice */}
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Attached files may expire after a period. Download them before they become
+                unavailable.
+              </div>
               <ul className="space-y-1.5">
                 {attachments.map((att) => (
                   <li key={att.name} className="flex items-center gap-2 text-sm">
@@ -165,22 +226,80 @@ export function PostCard({ post, attachments, className }: PostCardProps) {
           </>
         )}
 
-        {post.enquiryEmail && (
+        {/* ── Consent by date (edit mode only) ─────────────────────────────── */}
+        {isForm && isEditing && (
           <>
             <Separator />
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Enquiry contact</p>
-              <p className="text-sm font-medium">{post.enquiryEmail}</p>
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Consent by date</p>
+              <input
+                type="date"
+                className="h-9 w-full rounded-[14px] border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring/50 focus:outline-none"
+                value={
+                  editState?.consentByDate ??
+                  isoToSgtDate((post as PGConsentFormPost).consentByDate)
+                }
+                onChange={(e) => onEditStateChange?.({ consentByDate: e.target.value })}
+              />
             </div>
           </>
         )}
 
-        {post.staffInCharge && (
+        {/* ── Enquiry email ─────────────────────────────────────────────────── */}
+        {(post.enquiryEmail || isEditing) && (
           <>
             <Separator />
-            <div className="space-y-1">
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Enquiry contact</p>
+              {isEditing ? (
+                <EnquiryEmailSelector
+                  emailOptions={emailOptions}
+                  value={editState?.enquiryEmail ?? post.enquiryEmail ?? ''}
+                  onChange={(email) => onEditStateChange?.({ enquiryEmail: email })}
+                />
+              ) : (
+                <p className="text-sm font-medium">{post.enquiryEmail}</p>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Staff in charge ───────────────────────────────────────────────── */}
+        {(post.staffInCharge || isEditing) && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground">Staff in charge</p>
-              <p className="text-sm font-medium">{post.staffInCharge}</p>
+              {isEditing ? (
+                <StaffSelector
+                  staff={staffList}
+                  value={(editState?.staffOwnerIds ?? []).map((id) => {
+                    const s = staffList.find((s) => s.staffId === id);
+                    return s
+                      ? {
+                          id: s.staffId.toString(),
+                          label: s.name,
+                          type: 'individual' as const,
+                          count: 1,
+                        }
+                      : {
+                          id: id.toString(),
+                          label: 'Unknown staff',
+                          type: 'individual' as const,
+                          count: 1,
+                        };
+                  })}
+                  onChange={(entities) =>
+                    onEditStateChange?.({
+                      staffOwnerIds: entities
+                        .filter((e) => e.type === 'individual')
+                        .map((e) => Number(e.id)),
+                    })
+                  }
+                />
+              ) : (
+                <p className="text-sm font-medium">{post.staffInCharge}</p>
+              )}
             </div>
           </>
         )}

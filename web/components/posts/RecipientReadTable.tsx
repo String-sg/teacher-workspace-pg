@@ -1,9 +1,10 @@
-import { Check, Clock, Download, X } from 'lucide-react';
+import { Download, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import {
   Badge,
   Button,
+  Input,
   Table,
   TableBody,
   TableCell,
@@ -22,9 +23,12 @@ import { downloadCsv, toCsv, type CsvColumn } from '~/helpers/exportCsv';
 import {
   countActiveFilters,
   DEFAULT_RECIPIENT_FILTER,
+  RecipientColumnPopover,
   RecipientFilterPopover,
-  type ColumnOption,
+  type ColumnVisibility,
+  type PgStatusFilter,
   type RecipientFilterValue,
+  type StatusFilter,
 } from './RecipientFilterPopover';
 
 type FilterControlProps =
@@ -34,7 +38,7 @@ type FilterControlProps =
 /**
  * `filter` / `onFilterChange` are optional — when both are passed the table
  * is controlled (so a parent like `PostDetailView` can wire stat cards to
- * the read filter). When absent, the table manages its own filter state.
+ * the status filter). When absent, the table manages its own filter state.
  */
 type RecipientReadTableProps = FilterControlProps &
   (
@@ -53,315 +57,406 @@ type RecipientReadTableProps = FilterControlProps &
       }
   );
 
+// ─── Toolbar ──────────────────────────────────────────────────────────────────
+
 function Toolbar({
-  count,
-  total,
   filter,
   onFilterChange,
   classOptions,
-  showReadStatus,
+  responseType,
   showPgStatus,
-  columnOptions,
-  showDeferredNote,
+  timestampLabel,
+  showParentGuardian,
   onExport,
 }: {
-  count: number;
-  total: number;
   filter: RecipientFilterValue;
   onFilterChange: (next: RecipientFilterValue) => void;
   classOptions: string[];
-  showReadStatus: boolean;
+  responseType: ResponseType | 'acknowledge' | 'yes-no';
   showPgStatus: boolean;
-  columnOptions: ColumnOption[];
-  showDeferredNote: boolean;
+  timestampLabel: string;
+  showParentGuardian: boolean;
   onExport: () => void;
 }) {
   const active = countActiveFilters(filter);
+
+  // Labels for active filter chips
+  const chips: { key: 'classId' | 'status' | 'pg'; label: string }[] = [];
+  if (filter.classId !== 'all') chips.push({ key: 'classId', label: `Class: ${filter.classId}` });
+  if (filter.status !== 'all') {
+    const statusLabels: Record<StatusFilter, string> = {
+      all: 'All',
+      read: 'Read',
+      unread: 'Unread',
+      acknowledged: 'Acknowledged',
+      pending: 'Pending',
+      yes: 'Yes',
+      no: 'No',
+      'no-response': 'No Response',
+    };
+    chips.push({ key: 'status', label: `Status: ${statusLabels[filter.status]}` });
+  }
+  if (filter.pg !== 'all') {
+    const pgLabels: Record<PgStatusFilter, string> = {
+      all: 'All',
+      onboarded: 'Onboarded',
+      'not-onboarded': 'Not Onboarded',
+    };
+    chips.push({ key: 'pg', label: `PG: ${pgLabels[filter.pg]}` });
+  }
+
+  function clearChip(key: 'classId' | 'status' | 'pg') {
+    const defaults: Pick<RecipientFilterValue, 'classId' | 'status' | 'pg'> = {
+      classId: 'all',
+      status: 'all',
+      pg: 'all',
+    };
+    onFilterChange({ ...filter, [key]: defaults[key] });
+  }
+
   return (
-    <div className="flex items-center justify-between gap-2">
-      <p className="text-sm text-muted-foreground">
-        {active > 0 ? `${count} of ${total} recipients` : `${total} recipients`}
-      </p>
+    <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={onExport} aria-label="Download CSV">
-          <Download className="h-4 w-4" />
-          Download
-        </Button>
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="h-9 pl-9 text-sm"
+            placeholder="Search students…"
+            value={filter.search}
+            onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
+          />
+        </div>
+
+        {/* Filter popover */}
         <RecipientFilterPopover
           value={filter}
           onChange={onFilterChange}
           classOptions={classOptions}
-          showReadStatus={showReadStatus}
+          responseType={responseType}
           showPgStatus={showPgStatus}
-          columnOptions={columnOptions}
-          showDeferredNote={showDeferredNote}
-          activeCount={active}
         />
+
+        {/* Columns popover */}
+        <RecipientColumnPopover
+          value={filter.columns}
+          onChange={(columns) => onFilterChange({ ...filter, columns })}
+          timestampLabel={timestampLabel}
+          showParentGuardian={showParentGuardian}
+        />
+
+        {/* Export */}
+        <Button variant="ghost" size="sm" onClick={onExport} aria-label="Export CSV">
+          <Download className="h-4 w-4" />
+          Export
+        </Button>
       </div>
+
+      {/* Active filter chips */}
+      {active > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {chips.map((chip) => (
+            <span
+              key={chip.key}
+              className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+            >
+              {chip.label}
+              <button
+                className="ml-0.5 cursor-pointer rounded-full hover:bg-blue-100"
+                onClick={() => clearChip(chip.key)}
+                aria-label={`Remove ${chip.label} filter`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function AnnouncementTable({
-  recipients,
+// ─── Status cell renderer ─────────────────────────────────────────────────────
+
+function StatusCell({
   responseType,
-  columns,
+  recipient,
 }: {
-  recipients: PGRecipient[];
-  responseType: ResponseType;
-  columns: RecipientFilterValue['columns'];
+  responseType: ResponseType | 'acknowledge' | 'yes-no';
+  recipient: PGRecipient | PGConsentFormRecipient;
 }) {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Student</TableHead>
-          <TableHead>Class</TableHead>
-          {columns.readStatus && <TableHead>Read Status</TableHead>}
-          {columns.readAt && <TableHead>Read At</TableHead>}
-          {responseType === 'acknowledge' && (
-            <>
-              {columns.acknowledged && <TableHead>Acknowledged</TableHead>}
-              {columns.acknowledgedAt && <TableHead>Acknowledged At</TableHead>}
-            </>
-          )}
-          {responseType === 'yes-no' && (
-            <>
-              {columns.response && <TableHead>Response</TableHead>}
-              {columns.respondedAt && <TableHead>Responded At</TableHead>}
-            </>
-          )}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {recipients.map((recipient) => (
-          <TableRow key={recipient.studentId}>
-            <TableCell className="font-medium">{recipient.studentName}</TableCell>
-            <TableCell className="text-muted-foreground">{recipient.classLabel}</TableCell>
-            {columns.readStatus && (
-              <TableCell>
-                {recipient.readStatus === 'read' ? (
-                  <Badge variant="success">
-                    <Check />
-                    Read
-                  </Badge>
-                ) : (
-                  <Badge variant="warning">
-                    <Clock />
-                    Unread
-                  </Badge>
-                )}
-              </TableCell>
-            )}
-            {columns.readAt && (
-              <TableCell className="text-muted-foreground">
-                {recipient.readStatus === 'read' ? formatDate(recipient.respondedAt) : '\u2014'}
-              </TableCell>
-            )}
-            {responseType === 'acknowledge' && (
-              <>
-                {columns.acknowledged && (
-                  <TableCell>
-                    {recipient.acknowledgedAt ? (
-                      <Badge variant="success">
-                        <Check />
-                        Yes
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive">
-                        <X />
-                        No
-                      </Badge>
-                    )}
-                  </TableCell>
-                )}
-                {columns.acknowledgedAt && (
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(recipient.acknowledgedAt)}
-                  </TableCell>
-                )}
-              </>
-            )}
-            {responseType === 'yes-no' && (
-              <>
-                {columns.response && (
-                  <TableCell>
-                    {recipient.formResponse === 'yes' ? (
-                      <Badge variant="success">Yes</Badge>
-                    ) : recipient.formResponse === 'no' ? (
-                      <Badge variant="destructive">No</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">{'\u2014'}</span>
-                    )}
-                  </TableCell>
-                )}
-                {columns.respondedAt && (
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(recipient.respondedAt)}
-                  </TableCell>
-                )}
-              </>
-            )}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-function ConsentFormTable({
-  recipients,
-  responseType,
-  columns,
-}: {
-  recipients: PGConsentFormRecipient[];
-  responseType: 'acknowledge' | 'yes-no';
-  columns: RecipientFilterValue['columns'];
-}) {
-  const responseLabel = responseType === 'acknowledge' ? 'Acknowledged' : 'Response';
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Student</TableHead>
-          <TableHead>Class</TableHead>
-          {columns.response && <TableHead>{responseLabel}</TableHead>}
-          {columns.respondedAt && <TableHead>Responded At</TableHead>}
-          {columns.pgStatus && <TableHead>PG Status</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {recipients.map((recipient) => (
-          <TableRow key={recipient.studentId}>
-            <TableCell className="font-medium">{recipient.studentName}</TableCell>
-            <TableCell className="text-muted-foreground">{recipient.classLabel}</TableCell>
-            {columns.response && (
-              <TableCell>
-                {recipient.response === 'YES' ? (
-                  <Badge variant="success">
-                    <Check />
-                    Yes
-                  </Badge>
-                ) : recipient.response === 'NO' ? (
-                  <Badge variant="destructive">
-                    <X />
-                    No
-                  </Badge>
-                ) : (
-                  <Badge variant="warning">
-                    <Clock />
-                    Pending
-                  </Badge>
-                )}
-              </TableCell>
-            )}
-            {columns.respondedAt && (
-              <TableCell className="text-muted-foreground">
-                {recipient.respondedAt ? formatDate(recipient.respondedAt) : '\u2014'}
-              </TableCell>
-            )}
-            {columns.pgStatus && (
-              <TableCell className="text-muted-foreground">
-                {recipient.pgStatus === 'onboarded' ? 'Onboarded' : 'Not Onboarded'}
-              </TableCell>
-            )}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-/**
- * Column options surfaced in the Filter popover. Returns only the columns
- * that actually apply to this post kind + response type, so the popover
- * doesn't show toggles for columns the table wouldn't have rendered anyway.
- */
-function resolveColumnOptions(
-  kind: 'announcement' | 'form',
-  responseType: ResponseType | 'acknowledge' | 'yes-no',
-): ColumnOption[] {
-  if (kind === 'announcement') {
-    const base: ColumnOption[] = [
-      { key: 'readStatus', label: 'Read Status' },
-      { key: 'readAt', label: 'Read At' },
-    ];
-    if (responseType === 'acknowledge') {
-      base.push(
-        { key: 'acknowledged', label: 'Acknowledged' },
-        { key: 'acknowledgedAt', label: 'Acknowledged At' },
-      );
-    } else if (responseType === 'yes-no') {
-      base.push(
-        { key: 'response', label: 'Response' },
-        { key: 'respondedAt', label: 'Responded At' },
-      );
-    }
-    return base;
+  if (responseType === 'view-only') {
+    const r = recipient as PGRecipient;
+    return r.readStatus === 'read' ? (
+      <Badge variant="success">Read</Badge>
+    ) : (
+      <span className="text-sm text-muted-foreground">Unread</span>
+    );
   }
-  return [
-    { key: 'response', label: responseType === 'acknowledge' ? 'Acknowledged' : 'Response' },
-    { key: 'respondedAt', label: 'Responded At' },
-    { key: 'pgStatus', label: 'PG Status' },
-  ];
-}
 
-/**
- * Project filtered rows into CSV columns respecting the current column
- * visibility. `Student` + `Class` are always included (identity anchors —
- * matches PGW's "Show Columns" behavior which never hides name/class).
- */
-function buildCsvColumns(
-  kind: 'announcement' | 'form',
-  responseType: ResponseType | 'acknowledge' | 'yes-no',
-  columns: RecipientFilterValue['columns'],
-): CsvColumn<Record<string, string>>[] {
-  const out: CsvColumn<Record<string, string>>[] = [
-    { key: 'studentName', header: 'Student' },
-    { key: 'classLabel', header: 'Class' },
-  ];
-  if (kind === 'announcement') {
-    if (columns.readStatus) out.push({ key: 'readStatus', header: 'Read Status' });
-    if (columns.readAt) out.push({ key: 'readAt', header: 'Read At' });
-    if (responseType === 'acknowledge') {
-      if (columns.acknowledged) out.push({ key: 'acknowledged', header: 'Acknowledged' });
-      if (columns.acknowledgedAt) out.push({ key: 'acknowledgedAt', header: 'Acknowledged At' });
-    } else if (responseType === 'yes-no') {
-      if (columns.response) out.push({ key: 'response', header: 'Response' });
-      if (columns.respondedAt) out.push({ key: 'respondedAt', header: 'Responded At' });
+  if (responseType === 'acknowledge') {
+    // Announcement acknowledge: use acknowledgedAt; consent form: use response
+    const isForm = 'response' in recipient;
+    if (isForm) {
+      const r = recipient as PGConsentFormRecipient;
+      return r.response === 'YES' ? (
+        <Badge variant="success">Acknowledged</Badge>
+      ) : (
+        <span className="text-sm text-muted-foreground">Pending</span>
+      );
+    } else {
+      const r = recipient as PGRecipient;
+      return r.acknowledgedAt ? (
+        <Badge variant="success">Acknowledged</Badge>
+      ) : (
+        <span className="text-sm text-muted-foreground">Pending</span>
+      );
     }
+  }
+
+  // yes-no
+  const isForm = 'response' in recipient;
+  if (isForm) {
+    const r = recipient as PGConsentFormRecipient;
+    return r.response === 'YES' ? (
+      <Badge variant="success">Yes</Badge>
+    ) : r.response === 'NO' ? (
+      <Badge variant="destructive">No</Badge>
+    ) : (
+      <span className="text-sm text-muted-foreground">No Response</span>
+    );
   } else {
-    const responseHeader = responseType === 'acknowledge' ? 'Acknowledged' : 'Response';
-    if (columns.response) out.push({ key: 'response', header: responseHeader });
-    if (columns.respondedAt) out.push({ key: 'respondedAt', header: 'Responded At' });
-    if (columns.pgStatus) out.push({ key: 'pgStatus', header: 'PG Status' });
+    const r = recipient as PGRecipient;
+    return r.formResponse === 'yes' ? (
+      <Badge variant="success">Yes</Badge>
+    ) : r.formResponse === 'no' ? (
+      <Badge variant="destructive">No</Badge>
+    ) : (
+      <span className="text-sm text-muted-foreground">No Response</span>
+    );
   }
+}
+
+// ─── Derived "status" for filtering ──────────────────────────────────────────
+
+function deriveStatus(
+  responseType: ResponseType | 'acknowledge' | 'yes-no',
+  recipient: PGRecipient | PGConsentFormRecipient,
+): StatusFilter {
+  if (responseType === 'view-only') {
+    return (recipient as PGRecipient).readStatus === 'read' ? 'read' : 'unread';
+  }
+  if (responseType === 'acknowledge') {
+    const isForm = 'response' in recipient;
+    if (isForm) {
+      const r = recipient as PGConsentFormRecipient;
+      return r.response === 'YES' ? 'acknowledged' : 'pending';
+    } else {
+      const r = recipient as PGRecipient;
+      return r.acknowledgedAt ? 'acknowledged' : 'pending';
+    }
+  }
+  // yes-no
+  const isForm = 'response' in recipient;
+  if (isForm) {
+    const r = recipient as PGConsentFormRecipient;
+    return r.response === 'YES' ? 'yes' : r.response === 'NO' ? 'no' : 'no-response';
+  } else {
+    const r = recipient as PGRecipient;
+    return r.formResponse === 'yes' ? 'yes' : r.formResponse === 'no' ? 'no' : 'no-response';
+  }
+}
+
+// ─── Sort helpers ─────────────────────────────────────────────────────────────
+
+/** Pending/unread rows first, then alphabetical by studentName. */
+function sortRecipients(
+  rows: (PGRecipient | PGConsentFormRecipient)[],
+  responseType: ResponseType | 'acknowledge' | 'yes-no',
+): (PGRecipient | PGConsentFormRecipient)[] {
+  return [...rows].sort((a, b) => {
+    const aStatus = deriveStatus(responseType, a);
+    const bStatus = deriveStatus(responseType, b);
+    const aPending = aStatus === 'unread' || aStatus === 'pending' || aStatus === 'no-response';
+    const bPending = bStatus === 'unread' || bStatus === 'pending' || bStatus === 'no-response';
+    if (aPending !== bPending) return aPending ? -1 : 1;
+    return a.studentName.localeCompare(b.studentName);
+  });
+}
+
+// ─── Timestamp resolver ───────────────────────────────────────────────────────
+
+function resolveTimestamp(
+  responseType: ResponseType | 'acknowledge' | 'yes-no',
+  recipient: PGRecipient | PGConsentFormRecipient,
+): string | null | undefined {
+  if (responseType === 'view-only') {
+    const r = recipient as PGRecipient;
+    return r.readStatus === 'read' ? r.respondedAt : undefined;
+  }
+  if (responseType === 'acknowledge') {
+    const isForm = 'response' in recipient;
+    if (isForm) {
+      return (recipient as PGConsentFormRecipient).respondedAt;
+    } else {
+      return (recipient as PGRecipient).acknowledgedAt;
+    }
+  }
+  // yes-no
+  const isForm = 'response' in recipient;
+  return isForm
+    ? (recipient as PGConsentFormRecipient).respondedAt
+    : (recipient as PGRecipient).respondedAt;
+}
+
+// ─── Timestamp column label ───────────────────────────────────────────────────
+
+function timestampLabel(responseType: ResponseType | 'acknowledge' | 'yes-no'): string {
+  if (responseType === 'view-only') return 'Read At';
+  if (responseType === 'acknowledge') return 'Acknowledged At';
+  return 'Responded At';
+}
+
+// ─── Unified table ────────────────────────────────────────────────────────────
+
+function UnifiedTable({
+  recipients,
+  responseType,
+  columns,
+  isForm,
+}: {
+  recipients: (PGRecipient | PGConsentFormRecipient)[];
+  responseType: ResponseType | 'acknowledge' | 'yes-no';
+  columns: ColumnVisibility;
+  isForm: boolean;
+}) {
+  const tsLabel = timestampLabel(responseType);
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Student</TableHead>
+          {columns.indexNumber && <TableHead>Index No.</TableHead>}
+          <TableHead>Class</TableHead>
+          <TableHead>Status</TableHead>
+          {columns.timestamp && <TableHead>{tsLabel}</TableHead>}
+          {columns.parentGuardian && isForm && <TableHead>Parent/Guardian</TableHead>}
+          {columns.pgStatus && isForm && <TableHead>PG Status</TableHead>}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {recipients.map((recipient) => {
+          const ts = resolveTimestamp(responseType, recipient);
+          const indexNo =
+            'indexNumber' in recipient
+              ? (recipient as PGConsentFormRecipient).indexNumber
+              : undefined;
+          const replyByParent =
+            'replyByParent' in recipient
+              ? (recipient as PGConsentFormRecipient).replyByParent
+              : undefined;
+          const pgStatus =
+            'pgStatus' in recipient ? (recipient as PGConsentFormRecipient).pgStatus : undefined;
+
+          return (
+            <TableRow key={recipient.studentId}>
+              <TableCell className="font-medium">{recipient.studentName}</TableCell>
+              {columns.indexNumber && (
+                <TableCell className="text-muted-foreground tabular-nums">
+                  {indexNo ?? '—'}
+                </TableCell>
+              )}
+              <TableCell>
+                <Badge variant="outline">{recipient.classLabel}</Badge>
+              </TableCell>
+              <TableCell>
+                <StatusCell responseType={responseType} recipient={recipient} />
+              </TableCell>
+              {columns.timestamp && (
+                <TableCell className="text-muted-foreground tabular-nums">
+                  {ts ? (formatDate(ts) ?? '—') : '—'}
+                </TableCell>
+              )}
+              {columns.parentGuardian && isForm && (
+                <TableCell className="text-muted-foreground">{replyByParent ?? '—'}</TableCell>
+              )}
+              {columns.pgStatus && isForm && (
+                <TableCell>
+                  {pgStatus === 'onboarded' ? (
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
+                      Onboarded
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-500/10 ring-inset">
+                      Not Onboarded
+                    </span>
+                  )}
+                </TableCell>
+              )}
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+}
+
+// ─── CSV export ───────────────────────────────────────────────────────────────
+
+function rowToCsv(
+  recipient: PGRecipient | PGConsentFormRecipient,
+  responseType: ResponseType | 'acknowledge' | 'yes-no',
+  isForm: boolean,
+): Record<string, string> {
+  const status = deriveStatus(responseType, recipient);
+  const statusLabels: Record<StatusFilter, string> = {
+    all: '',
+    read: 'Read',
+    unread: 'Unread',
+    acknowledged: 'Acknowledged',
+    pending: 'Pending',
+    yes: 'Yes',
+    no: 'No',
+    'no-response': 'No Response',
+  };
+  const ts = resolveTimestamp(responseType, recipient);
+  const indexNo =
+    'indexNumber' in recipient ? ((recipient as PGConsentFormRecipient).indexNumber ?? '') : '';
+  const replyByParent = isForm ? ((recipient as PGConsentFormRecipient).replyByParent ?? '') : '';
+  const pgStatus = isForm
+    ? (recipient as PGConsentFormRecipient).pgStatus === 'onboarded'
+      ? 'Onboarded'
+      : 'Not Onboarded'
+    : '';
+  return {
+    studentName: recipient.studentName,
+    indexNumber: indexNo,
+    classLabel: recipient.classLabel,
+    status: statusLabels[status],
+    timestamp: ts ? (formatDate(ts) ?? '') : '',
+    parentGuardian: replyByParent,
+    pgStatus,
+  };
+}
+
+function buildCsvColumns(
+  columns: ColumnVisibility,
+  isForm: boolean,
+  tsLabel: string,
+): CsvColumn<Record<string, string>>[] {
+  const out: CsvColumn<Record<string, string>>[] = [{ key: 'studentName', header: 'Student' }];
+  if (columns.indexNumber) out.push({ key: 'indexNumber', header: 'Index No.' });
+  out.push({ key: 'classLabel', header: 'Class' });
+  out.push({ key: 'status', header: 'Status' });
+  if (columns.timestamp) out.push({ key: 'timestamp', header: tsLabel });
+  if (columns.parentGuardian && isForm)
+    out.push({ key: 'parentGuardian', header: 'Parent/Guardian' });
+  if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'PG Status' });
   return out;
 }
 
-function announcementRowToCsv(r: PGRecipient): Record<string, string> {
-  return {
-    studentName: r.studentName,
-    classLabel: r.classLabel,
-    readStatus: r.readStatus === 'read' ? 'Read' : 'Unread',
-    readAt: r.readStatus === 'read' ? (formatDate(r.respondedAt) ?? '') : '',
-    acknowledged: r.acknowledgedAt ? 'Yes' : 'No',
-    acknowledgedAt: formatDate(r.acknowledgedAt) ?? '',
-    response: r.formResponse === 'yes' ? 'Yes' : r.formResponse === 'no' ? 'No' : 'Pending',
-    respondedAt: formatDate(r.respondedAt) ?? '',
-  };
-}
-
-function consentFormRowToCsv(r: PGConsentFormRecipient): Record<string, string> {
-  return {
-    studentName: r.studentName,
-    classLabel: r.classLabel,
-    response: r.response === 'YES' ? 'Yes' : r.response === 'NO' ? 'No' : 'Pending',
-    respondedAt: r.respondedAt ? (formatDate(r.respondedAt) ?? '') : '',
-    pgStatus: r.pgStatus === 'onboarded' ? 'Onboarded' : 'Not Onboarded',
-  };
-}
+// ─── Main export ──────────────────────────────────────────────────────────────
 
 export function RecipientReadTable(props: RecipientReadTableProps) {
   const isForm = props.kind === 'form';
@@ -377,54 +472,52 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
     [props.recipients],
   );
 
+  const responseType = props.responseType as ResponseType | 'acknowledge' | 'yes-no';
+
   const filteredRecipients = useMemo(() => {
-    return props.recipients.filter((r) => {
+    const rows = props.recipients as (PGRecipient | PGConsentFormRecipient)[];
+    const filtered = rows.filter((r) => {
+      // Search filter
+      if (filter.search) {
+        const q = filter.search.toLowerCase();
+        const nameMatch = r.studentName.toLowerCase().includes(q);
+        const classMatch = r.classLabel.toLowerCase().includes(q);
+        if (!nameMatch && !classMatch) return false;
+      }
+      // Class filter
       if (filter.classId !== 'all' && r.classLabel !== filter.classId) return false;
-      if (isForm) {
-        if (filter.pg !== 'all' && (r as PGConsentFormRecipient).pgStatus !== filter.pg)
-          return false;
-      } else {
-        if (filter.read !== 'all' && (r as PGRecipient).readStatus !== filter.read) return false;
+      // Status filter
+      if (filter.status !== 'all' && deriveStatus(responseType, r) !== filter.status) return false;
+      // PG status filter
+      if (filter.pg !== 'all') {
+        const pgS = 'pgStatus' in r ? (r as PGConsentFormRecipient).pgStatus : undefined;
+        if (pgS !== filter.pg) return false;
       }
       return true;
     });
-  }, [props.recipients, filter, isForm]);
+    return sortRecipients(filtered, responseType);
+  }, [props.recipients, filter, responseType]);
 
-  const columnOptions = useMemo(
-    () => resolveColumnOptions(isForm ? 'form' : 'announcement', props.responseType),
-    [isForm, props.responseType],
-  );
+  const tsLabel = timestampLabel(responseType);
 
   const handleExport = () => {
-    const csvColumns = buildCsvColumns(
-      isForm ? 'form' : 'announcement',
-      props.responseType,
-      filter.columns,
-    );
-    const rows = isForm
-      ? (filteredRecipients as PGConsentFormRecipient[]).map(consentFormRowToCsv)
-      : (filteredRecipients as PGRecipient[]).map(announcementRowToCsv);
+    const csvCols = buildCsvColumns(filter.columns, isForm, tsLabel);
+    const rows = filteredRecipients.map((r) => rowToCsv(r, responseType, isForm));
     const today = new Date().toISOString().slice(0, 10);
     const stem = props.exportId ? `recipients-${props.exportId}-${today}` : `recipients-${today}`;
-    downloadCsv(`${stem}.csv`, toCsv({ columns: csvColumns, rows }));
+    downloadCsv(`${stem}.csv`, toCsv({ columns: csvCols, rows }));
   };
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-        {isForm ? 'Consent form responses' : 'Recipient read status'}
-      </p>
-
       <Toolbar
-        count={filteredRecipients.length}
-        total={props.recipients.length}
         filter={filter}
         onFilterChange={onFilterChange}
         classOptions={classOptions}
-        showReadStatus={!isForm}
+        responseType={responseType}
         showPgStatus={isForm}
-        columnOptions={columnOptions}
-        showDeferredNote={!isForm}
+        timestampLabel={tsLabel}
+        showParentGuardian={isForm}
         onExport={handleExport}
       />
 
@@ -433,17 +526,12 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
           <p className="px-6 py-12 text-center text-sm text-muted-foreground">
             No recipients match these filters.
           </p>
-        ) : isForm ? (
-          <ConsentFormTable
-            recipients={filteredRecipients as PGConsentFormRecipient[]}
-            responseType={props.responseType}
-            columns={filter.columns}
-          />
         ) : (
-          <AnnouncementTable
-            recipients={filteredRecipients as PGRecipient[]}
-            responseType={props.responseType}
+          <UnifiedTable
+            recipients={filteredRecipients}
+            responseType={responseType}
             columns={filter.columns}
+            isForm={isForm}
           />
         )}
       </div>
