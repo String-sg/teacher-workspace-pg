@@ -488,7 +488,11 @@ export function mapConsentFormDetail(detail: PGApiConsentFormDetail): PGConsentF
   const recipients: PGConsentFormRecipient[] = recipientRows.map((r) => ({
     studentId: String(r.student.studentId),
     studentName: r.student.studentName,
-    classLabel: r.student.className,
+    // PGW returns the group/CCA name as `className` when the form targets a CCA.
+    // Derive the real class from `indexNumber` (e.g. "4A001" → "4A") when available.
+    classLabel: r.student.indexNumber
+      ? r.student.indexNumber.replace(/\d+$/, '')
+      : r.student.className,
     indexNumber: r.student.indexNumber,
     response: r.reply,
     respondedAt: r.replyDate,
