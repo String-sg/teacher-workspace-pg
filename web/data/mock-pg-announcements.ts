@@ -55,6 +55,8 @@ export interface PGRecipient {
   studentId: string;
   studentName: string;
   classLabel: string;
+  /** Student index number — not surfaced by PGW for announcements today; always `undefined`. */
+  indexNumber?: string;
   readStatus: 'read' | 'unread';
   respondedAt?: string;
   /**
@@ -65,6 +67,8 @@ export interface PGRecipient {
   formResponse?: 'yes' | 'no';
   acknowledgedAt?: string;
   questionAnswers?: Record<string, string>;
+  /** PG onboarding state — not surfaced by PGW for announcements today; always `undefined`. */
+  pgStatus?: 'onboarded' | 'not-onboarded';
 }
 
 export type PGTargetType = 'class' | 'group' | 'cca' | 'level';
@@ -189,8 +193,12 @@ export interface PGConsentFormRecipient {
   studentId: string;
   studentName: string;
   classLabel: string;
+  /** Student index number from `PGApiConsentFormStudent.student.indexNumber`. */
+  indexNumber?: string;
   response: 'YES' | 'NO' | null;
   respondedAt: string | null;
+  /** Name of the parent/guardian who submitted the consent reply. Null when no response yet. */
+  replyByParent?: string | null;
   /**
    * Onboarding state on the Parents Gateway side. Derived from
    * `PGApiConsentFormStudent.onBoardedCategory`: any non-empty category maps

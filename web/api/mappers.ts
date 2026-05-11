@@ -489,8 +489,10 @@ export function mapConsentFormDetail(detail: PGApiConsentFormDetail): PGConsentF
     studentId: String(r.student.studentId),
     studentName: r.student.studentName,
     classLabel: r.student.className,
+    indexNumber: r.student.indexNumber,
     response: r.reply,
     respondedAt: r.replyDate,
+    replyByParent: r.replyByParent,
     pgStatus: r.onBoardedCategory && r.onBoardedCategory.length > 0 ? 'onboarded' : 'not-onboarded',
   }));
 
