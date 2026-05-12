@@ -1113,19 +1113,21 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
         <div className="border-b bg-muted px-6 py-3">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Lock className="h-3.5 w-3.5 shrink-0" />
-            This post has been sent. Only{' '}
-            <span className="font-medium text-foreground">Staff in charge</span>
-            {', '}
-            <span className="font-medium text-foreground">Enquiry email</span>
-            {detail?.kind === 'form' && (
-              <>
-                {', '}
-                <span className="font-medium text-foreground">Due date</span>
-                {' and '}
-                <span className="font-medium text-foreground">Reminder</span>
-              </>
-            )}{' '}
-            can be changed.
+            <span>
+              This post has been sent. Only{' '}
+              <span className="font-medium text-foreground">Staff in charge</span>
+              {' and '}
+              <span className="font-medium text-foreground">Enquiry email</span>
+              {detail?.kind === 'form' && (
+                <>
+                  {', '}
+                  <span className="font-medium text-foreground">Due date</span>
+                  {' and '}
+                  <span className="font-medium text-foreground">Reminder</span>
+                </>
+              )}{' '}
+              can be changed.
+            </span>
           </p>
         </div>
       )}
