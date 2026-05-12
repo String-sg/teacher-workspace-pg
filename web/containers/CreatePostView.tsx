@@ -685,13 +685,21 @@ function postToFormState(
   };
 
   switch (post.kind) {
-    case 'form':
+    case 'form': {
+      // Clear the due date if it has already passed — the teacher will need to
+      // pick a new date before rescheduling (especially relevant for failed
+      // scheduled posts, but applies to any edit of an expired form).
+      const dueDateRaw = post.consentByDate
+        ? new Date(post.consentByDate) < new Date()
+          ? ''
+          : sgtIsoToLocalDate(post.consentByDate)
+        : '';
       return {
         ...common,
         kind: 'form',
         responseType: post.responseType,
         questions: post.questions,
-        dueDate: post.consentByDate ? sgtIsoToLocalDate(post.consentByDate) : '',
+        dueDate: dueDateRaw,
         reminder:
           post.reminder.type === 'NONE'
             ? { type: 'NONE' }
@@ -705,6 +713,7 @@ function postToFormState(
           : undefined,
         venue: post.event?.venue ?? '',
       };
+    }
     case 'announcement':
       return {
         ...common,
