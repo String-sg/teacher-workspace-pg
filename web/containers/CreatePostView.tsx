@@ -1116,17 +1116,12 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
             <span>
               This post has been sent. Only{' '}
               <span className="font-medium text-foreground">Staff in charge</span>
-              {' and '}
+              {', '}
               <span className="font-medium text-foreground">Enquiry email</span>
-              {detail?.kind === 'form' && (
-                <>
-                  {', '}
-                  <span className="font-medium text-foreground">Due date</span>
-                  {' and '}
-                  <span className="font-medium text-foreground">Reminder</span>
-                </>
-              )}{' '}
-              can be changed.
+              {', '}
+              <span className="font-medium text-foreground">Due date</span>
+              {' and '}
+              <span className="font-medium text-foreground">Reminder</span> can be changed.
             </span>
           </p>
         </div>
