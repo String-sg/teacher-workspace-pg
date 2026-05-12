@@ -155,23 +155,12 @@ interface DetailHeaderProps {
   post: PGPost;
   isEditing: boolean;
   saving: boolean;
-  canEditInline: boolean;
-  onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
   onDelete: () => void;
 }
 
-function DetailHeader({
-  post,
-  isEditing,
-  saving,
-  canEditInline,
-  onEdit,
-  onSave,
-  onCancel,
-  onDelete,
-}: DetailHeaderProps) {
+function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: DetailHeaderProps) {
   const badge = getPostStatusBadge(post);
   const iso = post.postedAt ?? post.createdAt;
   const postedDate = formatDateTime(iso) ?? formatDate(iso);
@@ -308,20 +297,14 @@ function DetailHeader({
             >
               Delete
             </Button>
-            {canEditInline ? (
-              <Button variant="secondary" size="sm" onClick={onEdit}>
-                Edit
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                render={<Link to={editHref} />}
-                nativeButton={false}
-              >
-                Edit
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              render={<Link to={editHref} />}
+              nativeButton={false}
+            >
+              Edit
+            </Button>
           </>
         )}
       </div>
@@ -467,11 +450,6 @@ function ConsentFormDetail({
  * staff in charge) inline on the detail page via the dedicated PGW endpoints.
  * Draft / scheduled posts should be fully edited via the edit form.
  */
-function canEditInlineStatus(post: PGPost): boolean {
-  if (post.kind === 'announcement') return post.status === 'posted';
-  return post.status === 'open' || post.status === 'closed';
-}
-
 /**
  * Delete confirmation mode — `'posted'` requires typing "DELETE";
  * `'draft'` is a single-click confirm.
@@ -493,8 +471,6 @@ const PostDetailView: React.FC = () => {
   const revalidator = useRevalidator();
   const failureReason = describeScheduledSendFailure(post.scheduledSendFailureCode);
 
-  const canEdit = canEditInlineStatus(post);
-
   // ── Inline edit state ──────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
   const [editState, setEditState] = useState<PostCardEditState>(() => ({
@@ -502,16 +478,6 @@ const PostDetailView: React.FC = () => {
     staffOwnerIds: post.staffOwnerIds ?? [],
   }));
   const [saving, setSaving] = useState(false);
-
-  function handleEdit() {
-    // Sync edit state to the latest loaded post values each time edit mode opens.
-    setEditState({
-      enquiryEmail: post.enquiryEmail ?? '',
-      staffOwnerIds: post.staffOwnerIds ?? [],
-      consentByDate: post.kind === 'form' ? isoToSgtDate(post.consentByDate) : undefined,
-    });
-    setIsEditing(true);
-  }
 
   function handleCancel() {
     setIsEditing(false);
@@ -600,8 +566,6 @@ const PostDetailView: React.FC = () => {
         post={post}
         isEditing={isEditing}
         saving={saving}
-        canEditInline={canEdit}
-        onEdit={handleEdit}
         onSave={handleSave}
         onCancel={handleCancel}
         onDelete={() => setDeleteOpen(true)}
