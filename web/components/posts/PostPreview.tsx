@@ -486,7 +486,7 @@ const PostPreview = React.memo(function PostPreview({
         <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           <Users className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <div className="flex flex-wrap gap-x-1.5">
-            <span className="font-medium text-foreground">Staff in charge:</span>
+            <span className="font-medium text-foreground">Staff-in-charge:</span>
             {selectedStaff.map((s, i) => (
               <span key={s.id}>
                 {s.label}

@@ -295,7 +295,7 @@ export function PostCard({
             <>
               <Separator />
               <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground">Staff in charge</p>
+                <p className="text-xs text-muted-foreground">Staff-in-charge</p>
                 {isEditing ? (
                   <StaffSelector
                     staff={staffList}

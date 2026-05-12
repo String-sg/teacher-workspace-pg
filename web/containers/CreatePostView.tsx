@@ -1115,7 +1115,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
             <Lock className="h-3.5 w-3.5 shrink-0" />
             <span>
               This post has been sent. Only{' '}
-              <span className="font-medium text-foreground">Staff in charge</span>
+              <span className="font-medium text-foreground">Staff-in-charge</span>
               {', '}
               <span className="font-medium text-foreground">Enquiry email</span>
               {', '}
@@ -1163,7 +1163,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
               {/* Staff in charge */}
               <div className="space-y-1.5">
                 <Label>
-                  Staff in charge{' '}
+                  Staff-in-charge{' '}
                   <span className="text-xs font-normal text-muted-foreground">(optional)</span>
                 </Label>
                 <StaffSelector
