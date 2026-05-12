@@ -342,13 +342,24 @@ export function mapConsentFormDraftDetail(draft: PGApiConsentFormDraft): PGConse
   // Staff in charge from staffOwners array (present on PGW draft responses).
   const staffOwners = (draft.staffOwners ?? []) as { staffID: number; staffName: string }[];
 
+  // Scheduled drafts carry status=SCHEDULED on the wire.
+  const status: PGConsentFormStatus = draft.status === 'SCHEDULED' ? 'scheduled' : 'draft';
+
+  // Targets — present on scheduled/saved drafts that carry pre-saved group selections.
+  const targets = (draft.targets ?? [])
+    .map<PGAnnouncementTarget | null>((t) => {
+      const type = toPGTargetType(t.targetType);
+      return type ? { type, id: t.targetId, label: t.targetName } : null;
+    })
+    .filter((t): t is PGAnnouncementTarget => t !== null);
+
   return {
     kind: 'form',
     id: `cfDraft_${draft.consentFormDraftId}` as ConsentFormDraftId,
     title: draft.title,
     description: richTextContent ? extractTextFromTiptap(richTextContent) : '',
     richTextContent,
-    status: 'draft',
+    status,
     responseType: draft.responseType === 'YES_NO' ? 'yes-no' : 'acknowledge',
     ownership: 'mine',
     recipients: [],
@@ -366,6 +377,7 @@ export function mapConsentFormDraftDetail(draft: PGApiConsentFormDraft): PGConse
     shortcuts: (draft.shortcuts as string[]) ?? [],
     staffOwnerIds: staffOwners.map((s) => s.staffID),
     staffInCharge: staffOwners[0]?.staffName,
+    targets,
     attachments: rehydrateAttachments(draft.attachments) as PGUploadedFile[],
     photos: rehydratePhotos(
       Array.isArray(draft.images) ? draft.images : draft.images.images,

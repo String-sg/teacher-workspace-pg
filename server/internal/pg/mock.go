@@ -29,6 +29,10 @@ var announcementDraftDetailByID = map[string]string{
 	"1038": "fixtures/announcement_draft_scheduled_failed.json", // SCHEDULED + send failed
 }
 
+var consentFormDraftDetailByID = map[string]string{
+	"1041": "fixtures/consent_form_draft_swim_gala.json", // SCHEDULED Swim Gala
+}
+
 var consentFormDetailByID = map[string]string{
 	"1038": "fixtures/consent_form_detail.json",           // OPEN
 	"1039": "fixtures/consent_form_detail_closed.json",    // CLOSED
@@ -152,7 +156,14 @@ func registerMockConsentForms(mux *http.ServeMux) {
 	// Reads
 	mux.HandleFunc("GET /api/web/2/staff/consentForms", serveFixture("fixtures/consent_forms.json"))
 	mux.HandleFunc("GET /api/web/2/staff/consentForms/shared", serveFixture("fixtures/consent_forms.json"))
-	mux.HandleFunc("GET /api/web/2/staff/consentForms/drafts/{consentFormDraftId}", serveFixture("fixtures/consent_form_draft.json"))
+	mux.HandleFunc("GET /api/web/2/staff/consentForms/drafts/{consentFormDraftId}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("consentFormDraftId")
+		if path, ok := consentFormDraftDetailByID[id]; ok {
+			serveFixture(path)(w, r)
+		} else {
+			serveFixture("fixtures/consent_form_draft.json")(w, r)
+		}
+	})
 	mux.HandleFunc("GET /api/web/2/staff/consentForms/{consentFormId}", func(w http.ResponseWriter, r *http.Request) {
 		path, ok := consentFormDetailByID[r.PathValue("consentFormId")]
 		if !ok {

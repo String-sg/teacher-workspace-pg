@@ -171,7 +171,7 @@ export interface PGApiAnnouncementDraft {
 
 export interface PGApiConsentFormDraft {
   consentFormDraftId: number;
-  status: 'DRAFT';
+  status: 'DRAFT' | 'SCHEDULED';
   postedConsentFormId: number | null;
   title: string;
   content: string | null;
@@ -192,6 +192,8 @@ export interface PGApiConsentFormDraft {
   studentGroups: unknown[];
   /** Staff in charge — present on draft responses from PGW. */
   staffOwners?: { staffID: number; staffName: string }[];
+  /** Recipient targets in the same shape as the detail endpoint's `targets[]`. Present on draft responses that carry pre-saved group selections. */
+  targets?: PGApiAnnouncementTarget[];
   images: { images: unknown[]; imagesOrigin: string } | unknown[];
   attachments: unknown[];
   urls: unknown[];
