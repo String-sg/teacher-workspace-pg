@@ -165,6 +165,7 @@ function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: D
   const iso = post.postedAt ?? post.createdAt;
   const postedDate = formatDateTime(iso) ?? formatDate(iso);
   const editHref = postHref(post, { edit: true });
+  const navigate = useNavigate();
   const revalidator = useRevalidator();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
