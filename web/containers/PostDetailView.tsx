@@ -354,14 +354,16 @@ function AnnouncementDetail({
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
-        <ReadTrackingCards
-          responseType={post.responseType}
-          stats={post.stats}
-          readFilter={readCardFilter}
-          onReadFilterChange={(next) =>
-            setFilter((f) => ({ ...f, status: next === null ? 'all' : next }))
-          }
-        />
+        {post.responseType !== 'view-only' && (
+          <ReadTrackingCards
+            responseType={post.responseType}
+            stats={post.stats}
+            readFilter={readCardFilter}
+            onReadFilterChange={(next) =>
+              setFilter((f) => ({ ...f, status: next === null ? 'all' : next }))
+            }
+          />
+        )}
 
         {showTable && (
           <div className="space-y-4 rounded-lg border bg-background p-6">
