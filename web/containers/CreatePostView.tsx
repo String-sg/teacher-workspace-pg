@@ -1,4 +1,14 @@
-import { ArrowLeft, CalendarClock, Eye, EyeOff, Lock, Plus, Save, Send } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  CalendarClock,
+  Eye,
+  EyeOff,
+  Lock,
+  Plus,
+  Save,
+  Send,
+} from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { LoaderFunctionArgs } from 'react-router';
 import { Link, Navigate, useLoaderData, useNavigate, useParams } from 'react-router';
@@ -66,6 +76,7 @@ import type { WebsiteLink } from '~/components/posts/WebsiteLinksSection';
 import { useSidebarContext } from '~/components/Sidebar/context';
 import { Button, Card, CardContent, Input, Label } from '~/components/ui';
 import {
+  describeScheduledSendFailure,
   isAnnouncementDraftId,
   isConsentFormDraftId,
   isConsentFormId,
@@ -841,6 +852,15 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
         detail.status === 'posting'),
     );
 
+  // True when editing a scheduled post whose send attempt has failed. The form
+  // is fully editable so the teacher can fix the issue and reschedule.
+  const isFailedScheduledEdit =
+    isEditing &&
+    Boolean(detail && detail.status === 'scheduled' && detail.scheduledSendFailureCode);
+  const failedScheduledReason = isFailedScheduledEdit
+    ? describeScheduledSendFailure(detail?.scheduledSendFailureCode)
+    : null;
+
   const draftIdRef = useRef<{ kind: 'announcement' | 'form'; id: number } | null>(
     editId?.startsWith('annDraft_')
       ? { kind: 'announcement', id: Number(editId.slice('annDraft_'.length)) }
@@ -1122,6 +1142,19 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
               <span className="font-medium text-foreground">Due date</span>
               {' and '}
               <span className="font-medium text-foreground">Reminder</span> can be changed.
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* Failed-scheduled error banner */}
+      {isFailedScheduledEdit && (
+        <div className="border-b border-destructive/20 bg-destructive/5 px-6 py-3">
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="font-medium">Scheduled send failed.</span> {failedScheduledReason}{' '}
+              Edit your post and reschedule to try again.
             </span>
           </p>
         </div>

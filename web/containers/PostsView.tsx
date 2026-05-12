@@ -451,16 +451,17 @@ const PostRowInner: React.FC<PostRowProps> = ({ row, duplicateEnabled, onDuplica
     isLowReadRate(row.postedAt, row.stats.readCount, row.stats.totalCount);
 
   // PGW disables row clicks for scheduled posts — there's no public detail
-  // endpoint for them (`retrieveAnnouncementDraftFullDetailsForStaff` filters
-  // status=DRAFT only). Teachers act on scheduled rows via the kebab menu
-  // (Reschedule / Cancel schedule).
-  const clickable = row.status !== 'scheduled' && row.status !== 'posting';
+  // endpoint for them. Exception: scheduled posts whose send failed are
+  // clickable so teachers can edit and reschedule.
+  const hasSendFailure = Boolean(row.scheduledSendFailureCode);
+  const clickable = (row.status !== 'scheduled' && row.status !== 'posting') || hasSendFailure;
+  // Failed-scheduled posts go straight to edit; drafts go to edit; everything
+  // else goes to the detail view.
+  const goToEdit = row.status === 'draft' || hasSendFailure;
   return (
     <TableRow
       className={clickable ? 'cursor-pointer' : 'cursor-default'}
-      onClick={
-        clickable ? () => navigate(postHref(row, { edit: row.status === 'draft' })) : undefined
-      }
+      onClick={clickable ? () => navigate(postHref(row, { edit: goToEdit })) : undefined}
     >
       {/* Title + description stacked */}
       <TableCell className="overflow-hidden pl-6 align-top whitespace-normal">
