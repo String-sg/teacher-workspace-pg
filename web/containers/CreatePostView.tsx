@@ -27,6 +27,7 @@ import {
   updateAnnouncementEnquiryEmail,
   updateAnnouncementStaffInCharge,
   updateConsentFormDraft,
+  updateConsentFormDueDate,
   updateConsentFormEnquiryEmail,
   updateConsentFormStaffInCharge,
   updateDraft,
@@ -931,7 +932,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
     }
   }
 
-  // Save only the fields editable on a sent post: staff in charge + enquiry email.
+  // Save fields editable on a sent post. Announcements: staff in charge + enquiry email.
+  // Consent forms: same + due date (no backend endpoint exists for reminder yet).
   async function handleSavePostedEdit() {
     if (!detail || saveState !== 'idle') return;
     setSaveState('submitting');
@@ -946,9 +948,12 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
         ]);
       } else {
         const id = detail.id as ConsentFormId;
+        const numericId = Number(id.slice(3));
+        const consentByDate = state.dueDate.trim() ? `${state.dueDate}T23:59:59+08:00` : '';
         await Promise.all([
           updateConsentFormEnquiryEmail(id, { enquiryEmailAddress: email }),
           updateConsentFormStaffInCharge(id, staffIds),
+          updateConsentFormDueDate(numericId, { consentByDate }),
         ]);
       }
       notify.success('Changes saved.');
@@ -1109,8 +1114,18 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Lock className="h-3.5 w-3.5 shrink-0" />
             This post has been sent. Only{' '}
-            <span className="font-medium text-foreground">Staff in charge</span> and{' '}
-            <span className="font-medium text-foreground">Enquiry email</span> can be changed.
+            <span className="font-medium text-foreground">Staff in charge</span>
+            {', '}
+            <span className="font-medium text-foreground">Enquiry email</span>
+            {detail?.kind === 'form' && (
+              <>
+                {', '}
+                <span className="font-medium text-foreground">Due date</span>
+                {' and '}
+                <span className="font-medium text-foreground">Reminder</span>
+              </>
+            )}{' '}
+            can be changed.
           </p>
         </div>
       )}
@@ -1349,34 +1364,34 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 </CardContent>
               </Card>
             )}
-
-            {/* DUE DATE & REMINDER Card — separate section below Response Type */}
-            {selectedType === 'post-with-response' &&
-              (state.responseType === 'acknowledge' || state.responseType === 'yes-no') && (
-                <Card>
-                  <CardContent className="space-y-5 p-6">
-                    <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                      Due Date &amp; Reminder
-                    </p>
-
-                    <div onFocus={() => setFocusSection('response')}>
-                      <DueDateSection
-                        value={state.dueDate}
-                        onChange={(value) => dispatch({ type: 'SET_DUE_DATE', payload: value })}
-                        required
-                      />
-                    </div>
-
-                    <ReminderSection
-                      value={state.reminder}
-                      onChange={(value) => dispatch({ type: 'SET_REMINDER', payload: value })}
-                      consentByDate={state.dueDate}
-                    />
-                  </CardContent>
-                </Card>
-              )}
           </div>
           {/* end locked-for-posted-edit */}
+
+          {/* DUE DATE & REMINDER Card — outside the lock so it stays editable on sent posts */}
+          {selectedType === 'post-with-response' &&
+            (state.responseType === 'acknowledge' || state.responseType === 'yes-no') && (
+              <Card>
+                <CardContent className="space-y-5 p-6">
+                  <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                    Due Date &amp; Reminder
+                  </p>
+
+                  <div onFocus={() => setFocusSection('response')}>
+                    <DueDateSection
+                      value={state.dueDate}
+                      onChange={(value) => dispatch({ type: 'SET_DUE_DATE', payload: value })}
+                      required
+                    />
+                  </div>
+
+                  <ReminderSection
+                    value={state.reminder}
+                    onChange={(value) => dispatch({ type: 'SET_REMINDER', payload: value })}
+                    consentByDate={state.dueDate}
+                  />
+                </CardContent>
+              </Card>
+            )}
         </div>
 
         {showPreview && (
