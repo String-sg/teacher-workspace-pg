@@ -20,6 +20,7 @@ var announcementDetailByID = map[string]string{
 	"1037": "fixtures/announcement_detail_yes_no.json",    // POSTED yes/no
 	"1038": "fixtures/announcement_detail_scheduled.json", // SCHEDULED
 	"1039": "fixtures/announcement_detail_draft.json",     // DRAFT
+	"1040": "fixtures/announcement_detail_shared.json",    // POSTED view-only (shared)
 }
 
 var consentFormDetailByID = map[string]string{
