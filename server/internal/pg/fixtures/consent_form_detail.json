@@ -1,80 +1,247 @@
-{
-  "consentFormId": 1038,
-  "title": "Consent Form for Boxing Competition 1 April 2026",
-  "richTextContent": {
-    "type": "doc",
-    "content": [
+[
+  {
+    "consentFormId": 1038,
+    "title": "Consent Form for Boxing Competition 1 April 2026",
+    "richTextContent": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [{ "type": "text", "text": "Dear Parents," }]
+        },
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [
+            {
+              "type": "text",
+              "text": "Your child has been selected to represent the school in the National Boxing Competition on 1 April 2026. Please indicate your consent below."
+            }
+          ]
+        }
+      ]
+    },
+    "responseType": "YES_NO",
+    "eventStartDate": "2026-04-01T04:00:00.000Z",
+    "eventEndDate": "2026-04-01T09:00:00.000Z",
+    "consentByDate": "2026-03-30T15:59:59.000Z",
+    "addReminderType": "ONE_TIME",
+    "reminderDate": "2026-03-29T15:59:59.000Z",
+    "postedDate": "2026-03-24T03:08:05.000Z",
+    "venue": "Singapore Indoor Stadium",
+    "enquiryEmailAddress": "greenridge_sec@moe.edu.sg",
+    "staffName": "TAN GUANG SHIN",
+    "createdBy": 1013,
+    "createdAt": "2026-03-24T03:08:05.000Z",
+    "attachments": [
       {
-        "type": "paragraph",
-        "attrs": { "textAlign": "left" },
-        "content": [{ "type": "text", "text": "Dear Parents," }]
+        "attachmentId": 8100,
+        "name": "boxing-competition-briefing.pdf",
+        "size": 213456,
+        "url": "/api/files/2/handleDownloadAttachment?attachmentId=8100"
+      }
+    ],
+    "images": [],
+    "webLinkList": [],
+    "customQuestions": [],
+    "staffOwners": [{ "staffID": 1013, "staffName": "TAN GUANG SHIN" }],
+    "targets": [
+      {
+        "announcementId": 1038,
+        "announcementTargetId": 3001,
+        "createdAt": "2026-03-24T03:08:05.000Z",
+        "updatedAt": "2026-03-24T03:08:05.000Z",
+        "isDeleted": false,
+        "targetAcadYear": 2026,
+        "targetId": 501,
+        "targetName": "Boxing",
+        "targetSchool": "Greenridge Secondary",
+        "targetType": "cca"
+      }
+    ],
+    "consentFormRecipients": [
+      {
+        "studentId": 1,
+        "reply": "YES",
+        "replyDate": "2026-03-25T09:14:22.000Z",
+        "replyByParent": "MRS TAN BEE LENG",
+        "parentType": "Mother",
+        "contactNumber": "91234567",
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 1,
+          "studentName": "TAN XIAO MING",
+          "indexNumber": "4A001",
+          "className": "Boxing",
+          "studentSex": "M"
+        }
       },
       {
-        "type": "paragraph",
-        "attrs": { "textAlign": "left" },
-        "content": [
-          {
-            "type": "text",
-            "text": "Your child has been selected to represent the school in the National Boxing Competition on 1 April 2026. Please indicate your consent below."
-          }
-        ]
+        "studentId": 2,
+        "reply": "YES",
+        "replyDate": "2026-03-25T11:02:44.000Z",
+        "replyByParent": "MR LEE KAH SENG",
+        "parentType": "Father",
+        "contactNumber": "98765432",
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 2,
+          "studentName": "LEE WEI LIANG",
+          "indexNumber": "4A002",
+          "className": "Boxing",
+          "studentSex": "M"
+        }
+      },
+      {
+        "studentId": 3,
+        "reply": "NO",
+        "replyDate": "2026-03-26T07:45:10.000Z",
+        "replyByParent": "MRS CHEN HUI FANG",
+        "parentType": "Mother",
+        "contactNumber": "87654321",
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 3,
+          "studentName": "CHEN YI XIN",
+          "indexNumber": "4A003",
+          "className": "Boxing",
+          "studentSex": "F"
+        }
+      },
+      {
+        "studentId": 4,
+        "reply": "YES",
+        "replyDate": "2026-03-26T14:30:05.000Z",
+        "replyByParent": "MR DAVID NG BUCK TEONG",
+        "parentType": "Father",
+        "contactNumber": "96543210",
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 4,
+          "studentName": "NG JUN WEI",
+          "indexNumber": "4B001",
+          "className": "Boxing",
+          "studentSex": "M"
+        }
+      },
+      {
+        "studentId": 5,
+        "reply": null,
+        "replyDate": null,
+        "replyByParent": null,
+        "parentType": null,
+        "contactNumber": null,
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 5,
+          "studentName": "EMILY WONG SHU HUI",
+          "indexNumber": "4B002",
+          "className": "Boxing",
+          "studentSex": "F"
+        }
+      },
+      {
+        "studentId": 6,
+        "reply": null,
+        "replyDate": null,
+        "replyByParent": null,
+        "parentType": null,
+        "contactNumber": null,
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "",
+        "student": {
+          "studentId": 6,
+          "studentName": "MUHAMMAD HAFIZ BIN AZIZ",
+          "indexNumber": "4B003",
+          "className": "Boxing",
+          "studentSex": "M"
+        }
+      },
+      {
+        "studentId": 7,
+        "reply": "YES",
+        "replyDate": "2026-03-27T08:10:33.000Z",
+        "replyByParent": "MDM PRIYA D/O RAJENDRAN",
+        "parentType": "Mother",
+        "contactNumber": "93456789",
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 7,
+          "studentName": "PRIYA KRISHNAMURTHY",
+          "indexNumber": "4C001",
+          "className": "Boxing",
+          "studentSex": "F"
+        }
+      },
+      {
+        "studentId": 8,
+        "reply": "NO",
+        "replyDate": "2026-03-27T15:55:49.000Z",
+        "replyByParent": "MR GOH BENG HUAT",
+        "parentType": "Father",
+        "contactNumber": "84321098",
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "",
+        "student": {
+          "studentId": 8,
+          "studentName": "GOH KAI JIE",
+          "indexNumber": "4C002",
+          "className": "Boxing",
+          "studentSex": "M"
+        }
+      },
+      {
+        "studentId": 9,
+        "reply": null,
+        "replyDate": null,
+        "replyByParent": null,
+        "parentType": null,
+        "contactNumber": null,
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 9,
+          "studentName": "LIM ZHEN YU",
+          "indexNumber": "4C003",
+          "className": "Boxing",
+          "studentSex": "M"
+        }
+      },
+      {
+        "studentId": 10,
+        "reply": "YES",
+        "replyDate": "2026-03-28T09:22:17.000Z",
+        "replyByParent": "MRS FATIMAH BTE HASSAN",
+        "parentType": "Mother",
+        "contactNumber": "97890123",
+        "remarks": null,
+        "isIndividual": true,
+        "onBoardedCategory": "REGISTERED",
+        "student": {
+          "studentId": 10,
+          "studentName": "NURUL AIN BTE RAHMAT",
+          "indexNumber": "4D001",
+          "className": "Boxing",
+          "studentSex": "F"
+        }
       }
-    ]
-  },
-  "responseType": "YES_NO",
-  "eventStartDate": "2026-04-01T04:00:00.000Z",
-  "eventEndDate": "2026-04-01T09:00:00.000Z",
-  "consentByDate": "2026-03-30T15:59:59.000Z",
-  "addReminderType": "ONE_TIME",
-  "reminderDate": "2026-03-29T15:59:59.000Z",
-  "postedDate": "2026-03-24T03:08:05.000Z",
-  "venue": null,
-  "enquiryEmailAddress": "greenridge_sec@moe.edu.sg",
-  "staffName": "TAN GUANG SHIN",
-  "createdBy": 1013,
-  "createdAt": "2026-03-24T03:08:05.000Z",
-  "attachments": [
-    {
-      "attachmentId": 8100,
-      "name": "boxing-competition-briefing.pdf",
-      "size": 213456,
-      "url": "/api/files/2/handleDownloadAttachment?attachmentId=8100"
-    }
-  ],
-  "images": [],
-  "websiteLinks": [],
-  "customQuestions": [],
-  "staffOwners": [{ "staffID": 1013, "staffName": "TAN GUANG SHIN" }],
-  "target": [
-    {
-      "announcementId": 1038,
-      "announcementTargetId": 3001,
-      "createdAt": "2026-03-24T03:08:05.000Z",
-      "updatedAt": "2026-03-24T03:08:05.000Z",
-      "isDeleted": false,
-      "targetAcadYear": 2026,
-      "targetId": 501,
-      "targetName": "Boxing",
-      "targetSchool": "Greenridge Secondary",
-      "targetType": "cca"
-    }
-  ],
-  "students": [
-    {
-      "studentId": 1,
-      "studentName": "TAN XIAO MING",
-      "className": "Boxing",
-      "response": "YES",
-      "respondedAt": "2026-03-25T09:00:00.000Z"
-    },
-    {
-      "studentId": 5,
-      "studentName": "EMILY WONG SHU HUI",
-      "className": "Boxing",
-      "response": null,
-      "respondedAt": null
-    }
-  ],
-  "status": "OPEN",
-  "consentFormHistory": []
-}
+    ],
+    "consentFormHistory": []
+  }
+]

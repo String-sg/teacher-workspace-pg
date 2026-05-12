@@ -202,7 +202,7 @@ export function SchedulePickerDialog({
               <div className="flex items-baseline justify-between gap-2">
                 <Label htmlFor="schedule-time-select">Time</Label>
                 <span className="text-xs text-muted-foreground">
-                  {scheduleWindow.start}–{scheduleWindow.end} SGT
+                  {scheduleWindow.start}–{scheduleWindow.end}
                 </span>
               </div>
               <Select

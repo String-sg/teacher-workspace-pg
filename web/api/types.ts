@@ -31,6 +31,10 @@ export interface PGApiConsentFormStudent {
   reply: 'YES' | 'NO' | null;
   replyDate: string | null;
   replyByParent: string | null;
+  /** Relationship of the responding parent/guardian to the student (e.g. "Mother", "Father", "Guardian"). */
+  parentType?: string | null;
+  /** Mobile number of the responding parent/guardian. */
+  contactNumber?: string | null;
   remarks: string | null;
   isIndividual: boolean;
   onBoardedCategory?: string;
@@ -150,11 +154,12 @@ export interface PGApiAnnouncementDetail {
 
 export interface PGApiAnnouncementDraft {
   announcementDraftId: number;
-  status: 'DRAFT';
+  status: 'DRAFT' | 'SCHEDULED';
   postedAnnouncementId: number | null;
   title: string;
   content: string | null;
-  richTextContent: string | null;
+  /** JSON-encoded string from real PGW; already-parsed object from mock. */
+  richTextContent: string | Record<string, unknown> | null;
   enquiryEmailAddress: string;
   staffGroups: unknown[];
   studentGroups: unknown[];
@@ -164,15 +169,18 @@ export interface PGApiAnnouncementDraft {
   shortcuts: unknown[];
   updatedAt: string;
   scheduledDateTime: string | null;
+  /** Set when the scheduled send attempt failed. Mirrors the same field on the detail endpoint. */
+  scheduledSendFailureCode?: string | null;
 }
 
 export interface PGApiConsentFormDraft {
   consentFormDraftId: number;
-  status: 'DRAFT';
+  status: 'DRAFT' | 'SCHEDULED';
   postedConsentFormId: number | null;
   title: string;
   content: string | null;
-  richTextContent: string | null;
+  /** JSON-encoded string from real PGW; already-parsed object from mock. */
+  richTextContent: string | Record<string, unknown> | null;
   venue: string;
   eventStartDate: { date: string; time: string } | null;
   eventEndDate: { date: string; time: string } | null;
@@ -181,10 +189,16 @@ export interface PGApiConsentFormDraft {
   enquiryEmailAddress: string;
   consentByDate: string | null;
   responseType: 'ACKNOWLEDGEMENT' | 'YES_NO' | '';
-  questions: unknown[];
+  /** PGW returns questions as `customQuestions` on both draft and detail. */
+  customQuestions?: unknown[];
+  questions?: unknown[];
   staffGroups: unknown[];
   studentGroups: unknown[];
-  images: { images: unknown[]; imagesOrigin: string };
+  /** Staff in charge — present on draft responses from PGW. */
+  staffOwners?: { staffID: number; staffName: string }[];
+  /** Recipient targets in the same shape as the detail endpoint's `targets[]`. Present on draft responses that carry pre-saved group selections. */
+  targets?: PGApiAnnouncementTarget[];
+  images: { images: unknown[]; imagesOrigin: string } | unknown[];
   attachments: unknown[];
   urls: unknown[];
   shortcuts: unknown[];

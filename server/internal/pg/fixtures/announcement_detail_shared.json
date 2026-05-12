@@ -1,0 +1,124 @@
+[
+  {
+    "announcementId": 1040,
+    "title": "Sports Day Arrangements",
+    "content": null,
+    "richTextContent": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [{ "type": "text", "text": "Dear Parents," }]
+        },
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [
+            {
+              "type": "text",
+              "text": "Please be informed of the following arrangements for Sports Day on 15 March 2026."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [
+            {
+              "type": "text",
+              "text": "Students are to report in their PE attire. Parents are welcome to attend and cheer for their children."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [{ "type": "text", "text": "Thank you." }]
+        }
+      ]
+    },
+    "responseType": "VIEW_ONLY",
+    "staffName": "MR AHMAD BIN IBRAHIM",
+    "createdBy": 1014,
+    "createdAt": "2026-03-12T06:30:00.000Z",
+    "postedDate": "2026-03-15T01:00:00.000Z",
+    "enquiryEmailAddress": "greenridge_sec@moe.edu.sg",
+    "attachments": [],
+    "images": [],
+    "shortcutLink": [],
+    "websiteLinks": [],
+    "target": [
+      {
+        "announcementId": 1040,
+        "announcementTargetId": 21,
+        "createdAt": "2026-03-12T06:30:00.000Z",
+        "isDeleted": false,
+        "targetAcadYear": 2026,
+        "targetId": 102,
+        "targetName": "4B (2026)",
+        "targetSchool": "Greenridge Secondary",
+        "targetType": "class",
+        "updatedAt": "2026-03-12T06:30:00.000Z"
+      },
+      {
+        "announcementId": 1040,
+        "announcementTargetId": 22,
+        "createdAt": "2026-03-12T06:30:00.000Z",
+        "isDeleted": false,
+        "targetAcadYear": 2026,
+        "targetId": 103,
+        "targetName": "4C (2026)",
+        "targetSchool": "Greenridge Secondary",
+        "targetType": "class",
+        "updatedAt": "2026-03-12T06:30:00.000Z"
+      }
+    ],
+    "staffOwners": [{ "staffID": 1014, "staffName": "MR AHMAD BIN IBRAHIM" }],
+    "students": [
+      {
+        "studentId": 5,
+        "studentName": "EMILY WONG SHU HUI",
+        "className": "4B",
+        "isRead": true,
+        "readStatus": "READ"
+      },
+      {
+        "studentId": 6,
+        "studentName": "MUHAMMAD HAFIZ BIN AZIZ",
+        "className": "4B",
+        "isRead": true,
+        "readStatus": "READ"
+      },
+      {
+        "studentId": 7,
+        "studentName": "PRIYA KRISHNAMURTHY",
+        "className": "4B",
+        "isRead": false
+      },
+      {
+        "studentId": 8,
+        "studentName": "GOH KAI JIE",
+        "className": "4C",
+        "isRead": false
+      },
+      {
+        "studentId": 9,
+        "studentName": "LIM ZHEN YU",
+        "className": "4C",
+        "isRead": true,
+        "readStatus": "READ"
+      },
+      {
+        "studentId": 10,
+        "studentName": "NURUL AIN BTE RAHMAT",
+        "className": "4C",
+        "isRead": true,
+        "readStatus": "READ"
+      }
+    ],
+    "status": "POSTED",
+    "scheduledSendAt": null,
+    "scheduledSendFailureCode": null
+  }
+]

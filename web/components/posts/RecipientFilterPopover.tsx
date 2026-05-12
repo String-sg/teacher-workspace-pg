@@ -1,4 +1,4 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { Columns2, SlidersHorizontal } from 'lucide-react';
 
 import {
   Button,
@@ -10,65 +10,94 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from '~/components/ui';
+import type { ResponseType } from '~/data/mock-pg-announcements';
 
-export type ReadStatusFilter = 'all' | 'read' | 'unread';
+export type StatusFilter =
+  | 'all'
+  | 'read'
+  | 'unread' // view-only
+  | 'acknowledged'
+  | 'pending' // acknowledge
+  | 'yes'
+  | 'no'
+  | 'no-response'; // yes-no
+
 export type PgStatusFilter = 'all' | 'onboarded' | 'not-onboarded';
 
 /**
- * Keys for the toggleable columns on `RecipientReadTable`. `Student` and
- * `Class` are always rendered as identity anchors, so they're not in this
- * map — PGW's "Show Columns" selector behaves the same way.
+ * Four optional columns. Student and Class are identity anchors and are always
+ * visible — not toggleable (mirrors PGW's "Show Columns" behaviour).
+ * Status is also always shown. The four keys here are the optional extras.
  */
-export type ColumnKey =
-  | 'readStatus'
-  | 'readAt'
-  | 'acknowledged'
-  | 'acknowledgedAt'
-  | 'response'
-  | 'respondedAt'
-  | 'pgStatus';
-
+export type ColumnKey = 'indexNumber' | 'timestamp' | 'parentGuardian' | 'pgStatus';
 export type ColumnVisibility = Record<ColumnKey, boolean>;
 
 export interface RecipientFilterValue {
   classId: string;
-  read: ReadStatusFilter;
+  /** Unified status filter — valid values depend on the post's `responseType`. */
+  status: StatusFilter;
   pg: PgStatusFilter;
+  /** Live search string — matched against studentName + classLabel. */
+  search: string;
   columns: ColumnVisibility;
 }
 
-interface ColumnOption {
-  key: ColumnKey;
-  label: string;
+/** Default column visibility: timestamp + parentGuardian + pgStatus on; indexNumber off. */
+export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
+  indexNumber: false,
+  timestamp: true,
+  parentGuardian: true,
+  pgStatus: true,
+};
+
+export const DEFAULT_RECIPIENT_FILTER: RecipientFilterValue = {
+  classId: 'all',
+  status: 'all',
+  pg: 'all',
+  search: '',
+  columns: DEFAULT_COLUMN_VISIBILITY,
+};
+
+/**
+ * Count of active (non-default) filters. Columns are intentionally excluded —
+ * column visibility is a display preference, not a filter in the narrowing sense.
+ */
+export function countActiveFilters(v: RecipientFilterValue): number {
+  let n = 0;
+  if (v.classId !== 'all') n += 1;
+  if (v.status !== 'all') n += 1;
+  if (v.pg !== 'all') n += 1;
+  return n;
 }
+
+// ─── Filter popover ───────────────────────────────────────────────────────────
 
 interface RecipientFilterPopoverProps {
   value: RecipientFilterValue;
   onChange: (next: RecipientFilterValue) => void;
-  /** Distinct classes present in the current recipient set. */
+  /** Distinct class labels present in the current recipient set. */
   classOptions: string[];
-  /** Hide the Read Status section for consent forms (they use Response, not read/unread). */
-  showReadStatus?: boolean;
-  /** Hide the PG Status section when the BFF doesn't surface it (announcements). */
+  /**
+   * Determines which status options to render:
+   * - `view-only` → Read / Unread
+   * - `acknowledge` → Acknowledged / Pending
+   * - `yes-no` → Yes / No / No Response
+   */
+  responseType: ResponseType | 'acknowledge' | 'yes-no';
+  /** Hide the PG Status section for announcement kinds (BFF doesn't surface it). */
   showPgStatus?: boolean;
-  /** Toggleable columns for the current post kind/response-type combination. */
-  columnOptions: ColumnOption[];
-  /** Announcement context: show the one-liner about PG fields we can't render yet. */
-  showDeferredNote?: boolean;
-  /** Number of filters currently narrowing the view — shown on the trigger badge. */
-  activeCount: number;
 }
 
 function RecipientFilterPopover({
   value,
   onChange,
   classOptions,
-  showReadStatus = true,
+  responseType,
   showPgStatus = true,
-  columnOptions,
-  showDeferredNote = false,
-  activeCount,
 }: RecipientFilterPopoverProps) {
+  const active = countActiveFilters(value);
+  const isDefault = value.classId === 'all' && value.status === 'all' && value.pg === 'all';
+
   return (
     <Popover>
       <PopoverTrigger
@@ -76,15 +105,15 @@ function RecipientFilterPopover({
           <Button variant="secondary" size="sm" aria-label="Filter recipients">
             <SlidersHorizontal className="h-4 w-4" />
             Filter
-            {activeCount > 0 && (
+            {active > 0 && (
               <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground">
-                {activeCount}
+                {active}
               </span>
             )}
           </Button>
         }
       />
-      <PopoverContent align="end" className="w-64 gap-5">
+      <PopoverContent align="end" className="w-60 gap-5">
         <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
           Filters
         </p>
@@ -102,19 +131,34 @@ function RecipientFilterPopover({
           </RadioGroup>
         </FilterSection>
 
-        {showReadStatus && (
-          <FilterSection label="Read Status">
-            <RadioGroup
-              value={value.read}
-              onValueChange={(v) => onChange({ ...value, read: v as ReadStatusFilter })}
-              className="gap-2"
-            >
-              <RadioOption value="all" label="All" />
-              <RadioOption value="read" label="Read" />
-              <RadioOption value="unread" label="Unread" />
-            </RadioGroup>
-          </FilterSection>
-        )}
+        <FilterSection label="Status">
+          <RadioGroup
+            value={value.status}
+            onValueChange={(v) => onChange({ ...value, status: v as StatusFilter })}
+            className="gap-2"
+          >
+            <RadioOption value="all" label="All" />
+            {responseType === 'view-only' && (
+              <>
+                <RadioOption value="read" label="Read" />
+                <RadioOption value="unread" label="Unread" />
+              </>
+            )}
+            {responseType === 'acknowledge' && (
+              <>
+                <RadioOption value="acknowledged" label="Acknowledged" />
+                <RadioOption value="pending" label="Pending" />
+              </>
+            )}
+            {responseType === 'yes-no' && (
+              <>
+                <RadioOption value="yes" label="Yes" />
+                <RadioOption value="no" label="No" />
+                <RadioOption value="no-response" label="No Response" />
+              </>
+            )}
+          </RadioGroup>
+        </FilterSection>
 
         {showPgStatus && (
           <FilterSection label="PG status">
@@ -130,35 +174,110 @@ function RecipientFilterPopover({
           </FilterSection>
         )}
 
-        {columnOptions.length > 0 && (
-          <FilterSection label="Columns">
-            <div className="flex flex-col gap-2">
-              {columnOptions.map((opt) => (
-                <CheckboxOption
-                  key={opt.key}
-                  label={opt.label}
-                  checked={value.columns[opt.key]}
-                  onCheckedChange={(checked) =>
-                    onChange({
-                      ...value,
-                      columns: { ...value.columns, [opt.key]: checked },
-                    })
-                  }
-                />
-              ))}
-            </div>
-          </FilterSection>
-        )}
-
-        {showDeferredNote && (
-          <p className="text-xs text-muted-foreground">
-            First Read By and parent role aren&apos;t available from PG yet.
-          </p>
+        {!isDefault && (
+          <button
+            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline"
+            onClick={() => onChange({ ...value, classId: 'all', status: 'all', pg: 'all' })}
+          >
+            Reset all filters
+          </button>
         )}
       </PopoverContent>
     </Popover>
   );
 }
+
+// ─── Column popover ───────────────────────────────────────────────────────────
+
+interface RecipientColumnPopoverProps {
+  value: ColumnVisibility;
+  onChange: (next: ColumnVisibility) => void;
+  /** Label for the Timestamp column adapts to post type (Read At / Responded At / Acknowledged At). */
+  timestampLabel: string;
+  /** Hide Parent/Guardian column option for announcement kinds (BFF doesn't surface it). */
+  showParentGuardian?: boolean;
+}
+
+function RecipientColumnPopover({
+  value,
+  onChange,
+  timestampLabel,
+  showParentGuardian = true,
+}: RecipientColumnPopoverProps) {
+  const columnDefs: { key: ColumnKey; label: string; show: boolean }[] = [
+    { key: 'indexNumber', label: 'Index No.', show: true },
+    { key: 'timestamp', label: timestampLabel, show: true },
+    { key: 'parentGuardian', label: 'Parent/Guardian', show: showParentGuardian },
+    { key: 'pgStatus', label: 'PG Status', show: true },
+  ];
+
+  const visibleDefs = columnDefs.filter((d) => d.show);
+
+  const allOn = visibleDefs.every((d) => value[d.key]);
+  const allOff = visibleDefs.every((d) => !value[d.key]);
+
+  function setAll(visible: boolean) {
+    const next = { ...value };
+    for (const d of visibleDefs) next[d.key] = visible;
+    onChange(next);
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <Button variant="secondary" size="sm" aria-label="Show/hide columns">
+            <Columns2 className="h-4 w-4" />
+            Columns
+          </Button>
+        }
+      />
+      <PopoverContent align="end" className="w-52 gap-4">
+        <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+          Columns
+        </p>
+
+        <div className="flex flex-col gap-2">
+          {visibleDefs.map((def) => (
+            <CheckboxOption
+              key={def.key}
+              label={def.label}
+              checked={value[def.key]}
+              onCheckedChange={(checked) => onChange({ ...value, [def.key]: checked })}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 border-t pt-2">
+          <button
+            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-40"
+            disabled={allOn}
+            onClick={() => setAll(true)}
+          >
+            Show all
+          </button>
+          <span className="text-muted-foreground/40">·</span>
+          <button
+            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-40"
+            disabled={allOff}
+            onClick={() => setAll(false)}
+          >
+            Hide all
+          </button>
+          <span className="text-muted-foreground/40">·</span>
+          <button
+            className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline"
+            onClick={() => onChange(DEFAULT_COLUMN_VISIBILITY)}
+          >
+            Reset
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
 
 function FilterSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -195,34 +314,5 @@ function CheckboxOption({
   );
 }
 
-/** Count of non-default filters — used by consumers to show an "active" badge. */
-export function countActiveFilters(v: RecipientFilterValue): number {
-  let n = 0;
-  if (v.classId !== 'all') n += 1;
-  if (v.read !== 'all') n += 1;
-  if (v.pg !== 'all') n += 1;
-  // Hidden columns also count — an unchecked column is a filter on the view.
-  const hiddenColumns = Object.values(v.columns).filter((visible) => !visible).length;
-  if (hiddenColumns > 0) n += 1;
-  return n;
-}
-
-export const ALL_COLUMNS_VISIBLE: ColumnVisibility = {
-  readStatus: true,
-  readAt: true,
-  acknowledged: true,
-  acknowledgedAt: true,
-  response: true,
-  respondedAt: true,
-  pgStatus: true,
-};
-
-export const DEFAULT_RECIPIENT_FILTER: RecipientFilterValue = {
-  classId: 'all',
-  read: 'all',
-  pg: 'all',
-  columns: ALL_COLUMNS_VISIBLE,
-};
-
-export { RecipientFilterPopover };
-export type { ColumnOption, RecipientFilterPopoverProps };
+export { RecipientFilterPopover, RecipientColumnPopover };
+export type { RecipientFilterPopoverProps, RecipientColumnPopoverProps };

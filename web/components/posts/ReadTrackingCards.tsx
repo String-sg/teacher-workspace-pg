@@ -165,7 +165,6 @@ const ResponseCard = memo(function ResponseCard({
 // ─── Announcement variant ───────────────────────────────────────────────────
 
 function AnnouncementCard({
-  responseType,
   stats,
   readFilter,
   onReadFilterChange,
@@ -175,7 +174,7 @@ function AnnouncementCard({
   readFilter?: ReadCardFilter;
   onReadFilterChange?: (next: ReadCardFilter) => void;
 }) {
-  const { totalCount, readCount, responseCount, yesCount, noCount } = stats;
+  const { totalCount, readCount } = stats;
   const unreadCount = Math.max(totalCount - readCount, 0);
 
   const active: 'main' | 'pending' | null =
@@ -197,33 +196,10 @@ function AnnouncementCard({
     />
   );
 
-  if (responseType === 'view-only') {
-    return readCard;
-  }
-
-  const pending = Math.max(totalCount - responseCount, 0);
-  const label = responseType === 'acknowledge' ? 'Acknowledged' : 'Responses received';
-  const noteWord = responseType === 'acknowledge' ? 'pending' : 'no response';
-  const miniStats: MiniStat[] =
-    responseType === 'yes-no'
-      ? [
-          { count: yesCount, label: 'Yes', tone: 'success' },
-          { count: noCount, label: 'No', tone: 'destructive' },
-        ]
-      : [];
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {readCard}
-      <ResponseCard
-        label={label}
-        count={responseCount}
-        total={totalCount}
-        pendingNote={pending > 0 ? `${pending} ${noteWord}` : null}
-        miniStats={miniStats}
-      />
-    </div>
-  );
+  // Announcements only track reads — response counts (yes/no/ack) are not
+  // surfaced on the announcement detail API and are hardcoded to 0 in the
+  // mapper. Always render only the read card for announcements.
+  return readCard;
 }
 
 // ─── Consent-form variant ───────────────────────────────────────────────────
@@ -240,8 +216,7 @@ function ConsentFormCard({
   // Yes/No: yesCount + noCount together make the responded count.
   const respondedCount =
     responseType === 'acknowledge' ? yesCount : Math.max(totalCount - pendingCount, 0);
-  const label =
-    responseType === 'acknowledge' ? 'Acknowledgements received' : 'Consent form responses';
+  const label = responseType === 'acknowledge' ? 'Acknowledgements received' : 'Post responses';
   const miniStats: MiniStat[] =
     responseType === 'yes-no'
       ? [

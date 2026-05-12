@@ -1,41 +1,28 @@
-{
-  "consentFormDraftId": 301,
-  "title": "Consent Form for Field Trip (Draft)",
-  "richTextContent": {
-    "type": "doc",
-    "content": [
-      {
-        "type": "paragraph",
-        "attrs": { "textAlign": "left" },
-        "content": [{ "type": "text", "text": "Dear Parents," }]
-      },
-      {
-        "type": "paragraph",
-        "attrs": { "textAlign": "left" },
-        "content": [
-          { "type": "text", "text": "We are organising a field trip and require your consent." }
-        ]
-      }
-    ]
-  },
-  "responseType": "YES_NO",
-  "eventStartDate": "2026-05-15T01:00:00.000Z",
-  "eventEndDate": "2026-05-15T09:00:00.000Z",
-  "consentByDate": "2026-05-12T15:59:59.000Z",
-  "addReminderType": "ONE_TIME",
-  "reminderDate": "2026-05-11T15:59:59.000Z",
-  "enquiryEmailAddress": "greenridge_sec@moe.edu.sg",
-  "attachments": [],
-  "images": [],
-  "websiteLinks": [],
-  "customQuestions": [],
-  "staffOwners": [{ "staffID": 1013, "staffName": "TAN GUANG SHIN" }],
-  "recipients": {
-    "classIds": [101],
-    "customGroupIds": [],
-    "ccaIds": [],
-    "levelIds": []
-  },
-  "createdAt": "2026-04-02T10:00:00.000Z",
-  "updatedAt": "2026-04-02T10:00:00.000Z"
-}
+[
+  {
+    "consentFormDraftId": 301,
+    "status": "DRAFT",
+    "postedConsentFormId": null,
+    "title": "Consent Form for Field Trip (Draft)",
+    "content": null,
+    "richTextContent": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"attrs\":{\"textAlign\":\"left\"},\"content\":[{\"type\":\"text\",\"text\":\"Dear Parents,\"}]},{\"type\":\"paragraph\",\"attrs\":{\"textAlign\":\"left\"},\"content\":[{\"type\":\"text\",\"text\":\"We are organising a field trip and require your consent.\"}]}]}",
+    "venue": "School Hall",
+    "eventStartDate": { "date": "2026-05-15", "time": "09:00" },
+    "eventEndDate": { "date": "2026-05-15", "time": "17:00" },
+    "reminderDate": "2026-05-11",
+    "addReminderType": "ONE_TIME",
+    "enquiryEmailAddress": "greenridge_sec@moe.edu.sg",
+    "consentByDate": "2026-05-12",
+    "responseType": "YES_NO",
+    "customQuestions": [],
+    "staffGroups": [],
+    "studentGroups": [],
+    "staffOwners": [{ "staffID": 1013, "staffName": "TAN GUANG SHIN" }],
+    "images": { "images": [], "imagesOrigin": "" },
+    "attachments": [],
+    "urls": [{ "webLink": "https://school.edu.sg", "linkDescription": "School website" }],
+    "shortcuts": [],
+    "updatedAt": "2026-04-02T10:00:00.000Z",
+    "scheduledDateTime": null
+  }
+]

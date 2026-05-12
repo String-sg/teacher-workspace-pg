@@ -1,10 +1,12 @@
+import { Loader2 } from 'lucide-react';
 import { ArrowLeft } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import type { LoaderFunctionArgs } from 'react-router';
 import {
   isRouteErrorResponse,
   Link,
   useLoaderData,
+  useNavigate,
   useRevalidator,
   useRouteError,
 } from 'react-router';
@@ -12,14 +14,24 @@ import {
 import {
   cancelAnnouncementSchedule,
   cancelConsentFormSchedule,
+  deleteAnnouncement,
+  deleteConsentForm,
+  fetchSchoolStaff,
+  fetchSession,
   getConfigs,
   rescheduleAnnouncementDraft,
   rescheduleConsentFormDraft,
+  updateAnnouncementEnquiryEmail,
+  updateAnnouncementStaffInCharge,
+  updateConsentFormDueDate,
+  updateConsentFormEnquiryEmail,
+  updateConsentFormStaffInCharge,
 } from '~/api/client';
 import { PGError, PGNotFoundError } from '~/api/errors';
-import type { PGApiConfig } from '~/api/types';
+import type { PGApiConfig, PGApiSchoolStaff, PGApiSession } from '~/api/types';
 import { ConsentFormHistoryList } from '~/components/posts/ConsentFormHistoryList';
-import { PostCard } from '~/components/posts/PostCard';
+import { DeletePostDialog } from '~/components/posts/DeletePostDialog';
+import { PostCard, isoToSgtDate, type PostCardEditState } from '~/components/posts/PostCard';
 import { ReadTrackingCards, type ReadCardFilter } from '~/components/posts/ReadTrackingCards';
 import {
   DEFAULT_RECIPIENT_FILTER,
@@ -38,6 +50,7 @@ import {
   validatePostRoute,
   type PGAnnouncementPost,
   type AnnouncementId,
+  type ConsentFormId,
   type PGConsentFormPost,
   type PGPost,
 } from '~/data/mock-pg-announcements';
@@ -49,6 +62,8 @@ import { notify } from '~/lib/notify';
 interface PostDetailLoaderData {
   post: PGPost;
   configs: PGApiConfig;
+  staff: PGApiSchoolStaff[];
+  session: PGApiSession;
 }
 
 // ─── Route loader ───────────────────────────────────────────────────────────
@@ -75,19 +90,22 @@ export async function loader({
   if (isAnnouncementDraftId(parsed)) throw new Response('Not Found', { status: 404 });
   if (isConsentFormDraftId(parsed)) throw new Response('Not Found', { status: 404 });
 
-  const [post, configs] = await Promise.all([
+  const [post, configs, staff, session] = await Promise.all([
     isConsentFormId(parsed)
       ? POST_REGISTRY.form.loadDetail(parsed)
       : POST_REGISTRY.announcement.loadDetail(parsed as AnnouncementId),
     getConfigs(),
+    fetchSchoolStaff().catch(() => [] as PGApiSchoolStaff[]),
+    fetchSession(),
   ]);
-  return { post, configs };
+  return { post, configs, staff, session };
 }
 
 // ─── Error boundary ─────────────────────────────────────────────────────────
 
 export function ErrorBoundary() {
   const error = useRouteError();
+  const navigate = useNavigate();
   // 404s arrive in two shapes: (a) a loader-thrown `Response(404)` for malformed
   // IDs that fail `validatePostRoute`, which hits `isRouteErrorResponse`; and
   // (b) a server 404 that bubbles up as `PGNotFoundError` from the fetch layer
@@ -106,7 +124,7 @@ export function ErrorBoundary() {
           ? 'This post may have been deleted.'
           : 'The server may be unavailable. Please try again.'}
       </p>
-      <Button variant="secondary" size="sm" render={<Link to="/posts" />} nativeButton={false}>
+      <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
         Back to Posts
       </Button>
     </div>
@@ -133,11 +151,21 @@ function extractDraftNumericId(id: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function DetailHeader({ post }: { post: PGPost }) {
+interface DetailHeaderProps {
+  post: PGPost;
+  isEditing: boolean;
+  saving: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+  onDelete: () => void;
+}
+
+function DetailHeader({ post, isEditing, saving, onSave, onCancel, onDelete }: DetailHeaderProps) {
   const badge = getPostStatusBadge(post);
   const iso = post.postedAt ?? post.createdAt;
   const postedDate = formatDateTime(iso) ?? formatDate(iso);
   const editHref = postHref(post, { edit: true });
+  const navigate = useNavigate();
   const revalidator = useRevalidator();
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
@@ -203,10 +231,9 @@ function DetailHeader({ post }: { post: PGPost }) {
         <Button
           variant="ghost"
           size="icon-sm"
-          render={<Link to="/posts" />}
-          nativeButton={false}
           aria-label="Back to Posts"
           className="mt-1"
+          onClick={() => navigate(-1)}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -223,8 +250,8 @@ function DetailHeader({ post }: { post: PGPost }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        {canReschedule && (
+      <div className="flex shrink-0 items-center gap-2">
+        {canReschedule && !isEditing && (
           <>
             <Button
               variant="ghost"
@@ -244,9 +271,43 @@ function DetailHeader({ post }: { post: PGPost }) {
             </Button>
           </>
         )}
-        <Button variant="secondary" size="sm" render={<Link to={editHref} />} nativeButton={false}>
-          Edit
-        </Button>
+
+        {isEditing ? (
+          <>
+            <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Saving\u2026
+                </>
+              ) : (
+                'Save changes'
+              )}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              render={<Link to={editHref} />}
+              nativeButton={false}
+            >
+              Edit
+            </Button>
+          </>
+        )}
       </div>
 
       {canReschedule && (
@@ -261,23 +322,35 @@ function DetailHeader({ post }: { post: PGPost }) {
   );
 }
 
-function AnnouncementDetail({ post }: { post: PGAnnouncementPost }) {
-  const sortedRecipients = useMemo(
-    () =>
-      [...post.recipients].sort((a, b) => {
-        if (a.readStatus === 'unread' && b.readStatus === 'read') return -1;
-        if (a.readStatus === 'read' && b.readStatus === 'unread') return 1;
-        return 0;
-      }),
-    [post.recipients],
-  );
+interface DetailCardProps {
+  isEditing: boolean;
+  editState: PostCardEditState;
+  onEditStateChange: (patch: Partial<PostCardEditState>) => void;
+  staffList: PGApiSchoolStaff[];
+  emailOptions: string[];
+}
 
-  // Filter is lifted here so stat cards can drive it. `read` maps 1:1 to the
+function AnnouncementDetail({
+  post,
+  isEditing,
+  editState,
+  onEditStateChange,
+  staffList,
+  emailOptions,
+}: { post: PGAnnouncementPost } & DetailCardProps) {
+  // Filter is lifted here so stat cards can drive it. `status` maps 1:1 to the
   // Read card's main/pending toggle; class + columns are still teacher-driven
   // via the popover.
   const [filter, setFilter] = useState<RecipientFilterValue>(DEFAULT_RECIPIENT_FILTER);
   const readCardFilter: ReadCardFilter =
-    filter.read === 'read' ? 'read' : filter.read === 'unread' ? 'unread' : null;
+    filter.status === 'read' ? 'read' : filter.status === 'unread' ? 'unread' : null;
+
+  const attachments = (post.attachments ?? []).map((a) => ({
+    name: a.name,
+    sizeKb: a.size / 1024,
+  }));
+
+  const showTable = post.status === 'posted' && post.stats.totalCount > 0;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -287,69 +360,218 @@ function AnnouncementDetail({ post }: { post: PGAnnouncementPost }) {
           stats={post.stats}
           readFilter={readCardFilter}
           onReadFilterChange={(next) =>
-            setFilter((f) => ({ ...f, read: next === null ? 'all' : next }))
+            setFilter((f) => ({ ...f, status: next === null ? 'all' : next }))
           }
         />
 
-        <RecipientReadTable
-          recipients={sortedRecipients}
-          responseType={post.responseType}
-          filter={filter}
-          onFilterChange={setFilter}
-          exportId={String(post.id)}
-        />
+        {showTable && (
+          <div className="space-y-4 rounded-lg border bg-background p-6">
+            <p className="text-sm font-semibold">Status</p>
+            <RecipientReadTable
+              recipients={post.recipients}
+              responseType={post.responseType}
+              filter={filter}
+              onFilterChange={setFilter}
+              exportId={String(post.id)}
+            />
+          </div>
+        )}
       </div>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
-        <PostCard post={post} />
+        <PostCard
+          post={post}
+          attachments={attachments}
+          isEditing={isEditing}
+          editState={editState}
+          onEditStateChange={onEditStateChange}
+          staffList={staffList}
+          emailOptions={emailOptions}
+        />
       </div>
     </div>
   );
 }
 
-function ConsentFormDetail({ post }: { post: PGConsentFormPost }) {
-  // Sort: pending (no response) first, then YES, then NO — matches how teachers
-  // triage chase-ups on the responses table.
-  const sortedRecipients = useMemo(
-    () =>
-      [...post.recipients].sort((a, b) => {
-        const rank = (r: typeof a) => (r.response === null ? 0 : r.response === 'YES' ? 1 : 2);
-        return rank(a) - rank(b);
-      }),
-    [post.recipients],
-  );
+function ConsentFormDetail({
+  post,
+  isEditing,
+  editState,
+  onEditStateChange,
+  staffList,
+  emailOptions,
+}: { post: PGConsentFormPost } & DetailCardProps) {
+  const attachments = (post.attachments ?? []).map((a) => ({
+    name: a.name,
+    sizeKb: a.size / 1024,
+  }));
+
+  const showTable =
+    (post.status === 'open' || post.status === 'closed') && post.stats.totalCount > 0;
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
         <ReadTrackingCards kind="form" responseType={post.responseType} stats={post.stats} />
 
-        <RecipientReadTable
-          kind="form"
-          recipients={sortedRecipients}
-          responseType={post.responseType}
-          exportId={String(post.id)}
-        />
+        {showTable && (
+          <div className="space-y-4 rounded-lg border bg-background p-6">
+            <p className="text-sm font-semibold">Status</p>
+            <RecipientReadTable
+              kind="form"
+              recipients={post.recipients}
+              responseType={post.responseType}
+              exportId={String(post.id)}
+            />
+          </div>
+        )}
 
         <ConsentFormHistoryList entries={post.history} />
       </div>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
-        <PostCard post={post} />
+        <PostCard
+          post={post}
+          attachments={attachments}
+          isEditing={isEditing}
+          editState={editState}
+          onEditStateChange={onEditStateChange}
+          staffList={staffList}
+          emailOptions={emailOptions}
+        />
       </div>
     </div>
   );
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * True for statuses where the teacher can update metadata (enquiry email,
+ * staff in charge) inline on the detail page via the dedicated PGW endpoints.
+ * Draft / scheduled posts should be fully edited via the edit form.
+ */
+/**
+ * Delete confirmation mode — `'posted'` requires typing "DELETE";
+ * `'draft'` is a single-click confirm.
+ */
+function deleteMode(post: PGPost): 'posted' | 'draft' {
+  if (post.kind === 'announcement') {
+    return post.status === 'posted' || post.status === 'posting' ? 'posted' : 'draft';
+  }
+  return post.status === 'open' || post.status === 'closed' || post.status === 'posting'
+    ? 'posted'
+    : 'draft';
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const PostDetailView: React.FC = () => {
-  const { post } = useLoaderData<PostDetailLoaderData>();
+  const { post, staff, session } = useLoaderData<PostDetailLoaderData>();
+  const navigate = useNavigate();
+  const revalidator = useRevalidator();
   const failureReason = describeScheduledSendFailure(post.scheduledSendFailureCode);
+
+  // ── Inline edit state ──────────────────────────────────────────────────────
+  const [isEditing, setIsEditing] = useState(false);
+  const [editState, setEditState] = useState<PostCardEditState>(() => ({
+    enquiryEmail: post.enquiryEmail ?? '',
+    staffOwnerIds: post.staffOwnerIds ?? [],
+  }));
+  const [saving, setSaving] = useState(false);
+
+  function handleCancel() {
+    setIsEditing(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      if (post.kind === 'announcement') {
+        const id = post.id as AnnouncementId;
+        await Promise.all([
+          updateAnnouncementEnquiryEmail(id, { enquiryEmailAddress: editState.enquiryEmail }),
+          updateAnnouncementStaffInCharge(id, editState.staffOwnerIds),
+        ]);
+      } else {
+        const id = post.id as ConsentFormId;
+        const numericId = Number(id.slice('cf_'.length));
+        const initialDate = isoToSgtDate(post.consentByDate);
+        const calls: Promise<unknown>[] = [
+          updateConsentFormEnquiryEmail(id, { enquiryEmailAddress: editState.enquiryEmail }),
+          updateConsentFormStaffInCharge(id, editState.staffOwnerIds),
+        ];
+        // Only update due date when it has been changed from the loaded value.
+        if (editState.consentByDate && editState.consentByDate !== initialDate) {
+          calls.push(
+            updateConsentFormDueDate(numericId, {
+              consentByDate: `${editState.consentByDate}T23:59:59+08:00`,
+            }),
+          );
+        }
+        await Promise.all(calls);
+      }
+      notify.success('Changes saved.');
+      setIsEditing(false);
+      revalidator.revalidate();
+    } catch {
+      notify.error('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── Delete state ───────────────────────────────────────────────────────────
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteConfirm() {
+    setDeleting(true);
+    try {
+      if (post.kind === 'announcement') {
+        await deleteAnnouncement(post.id as AnnouncementId);
+      } else {
+        await deleteConsentForm(post.id as ConsentFormId);
+      }
+      notify.success('Post deleted.');
+      void navigate('/posts');
+    } catch {
+      notify.error('Failed to delete. Please try again.');
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  }
+
+  // ── Email options from session ─────────────────────────────────────────────
+  const emailOptions = [session.staffEmailAdd, session.schoolEmailAddress].filter(
+    (e): e is string => Boolean(e),
+  );
+
+  // ── Edit state change handler ──────────────────────────────────────────────
+  function handleEditStateChange(patch: Partial<PostCardEditState>) {
+    setEditState((prev) => ({ ...prev, ...patch }));
+  }
+
+  const cardProps = {
+    isEditing,
+    editState,
+    onEditStateChange: handleEditStateChange,
+    staffList: staff,
+    emailOptions,
+  };
 
   return (
     <div className="space-y-6 px-6 py-6">
-      <DetailHeader post={post} />
+      <DetailHeader
+        post={post}
+        isEditing={isEditing}
+        saving={saving}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        onDelete={() => setDeleteOpen(true)}
+      />
+
       {failureReason && (
         <div
           role="alert"
@@ -359,17 +581,27 @@ const PostDetailView: React.FC = () => {
           new time to try again, or cancel to return it to drafts.
         </div>
       )}
-      {renderDetail(post)}
+
+      {renderDetail(post, cardProps)}
+
+      <DeletePostDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        mode={deleteMode(post)}
+        title={post.title}
+        onConfirm={handleDeleteConfirm}
+        pending={deleting}
+      />
     </div>
   );
 };
 
-function renderDetail(post: PGPost) {
+function renderDetail(post: PGPost, cardProps: DetailCardProps) {
   switch (post.kind) {
     case 'announcement':
-      return <AnnouncementDetail post={post} />;
+      return <AnnouncementDetail post={post} {...cardProps} />;
     case 'form':
-      return <ConsentFormDetail post={post} />;
+      return <ConsentFormDetail post={post} {...cardProps} />;
     default:
       return assertNever(post);
   }

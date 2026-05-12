@@ -20,6 +20,17 @@ var announcementDetailByID = map[string]string{
 	"1037": "fixtures/announcement_detail_yes_no.json",    // POSTED yes/no
 	"1038": "fixtures/announcement_detail_scheduled.json", // SCHEDULED
 	"1039": "fixtures/announcement_detail_draft.json",     // DRAFT
+	"1040": "fixtures/announcement_detail_shared.json",    // POSTED view-only (shared)
+}
+
+// Draft-detail fixture lookup by draft ID. Falls back to the generic draft
+// fixture for IDs not listed here (plain drafts all share the same shape).
+var announcementDraftDetailByID = map[string]string{
+	"1038": "fixtures/announcement_draft_scheduled_failed.json", // SCHEDULED + send failed
+}
+
+var consentFormDraftDetailByID = map[string]string{
+	"1041": "fixtures/consent_form_draft_swim_gala.json", // SCHEDULED Swim Gala
 }
 
 var consentFormDetailByID = map[string]string{
@@ -72,7 +83,14 @@ func registerMockAnnouncements(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/web/2/staff/announcements/{first}/{second}", func(w http.ResponseWriter, r *http.Request) {
 		switch r.PathValue("first") {
 		case "drafts", "prefilled":
-			serveFixture("fixtures/announcement_draft.json")(w, r)
+			// Look up a per-ID fixture first (e.g. failed-scheduled drafts carry
+			// extra fields); fall back to the generic draft fixture for plain drafts.
+			id := r.PathValue("second")
+			if path, ok := announcementDraftDetailByID[id]; ok {
+				serveFixture(path)(w, r)
+			} else {
+				serveFixture("fixtures/announcement_draft.json")(w, r)
+			}
 		default:
 			http.NotFound(w, r)
 		}
@@ -138,7 +156,14 @@ func registerMockConsentForms(mux *http.ServeMux) {
 	// Reads
 	mux.HandleFunc("GET /api/web/2/staff/consentForms", serveFixture("fixtures/consent_forms.json"))
 	mux.HandleFunc("GET /api/web/2/staff/consentForms/shared", serveFixture("fixtures/consent_forms.json"))
-	mux.HandleFunc("GET /api/web/2/staff/consentForms/drafts/{consentFormDraftId}", serveFixture("fixtures/consent_form_draft.json"))
+	mux.HandleFunc("GET /api/web/2/staff/consentForms/drafts/{consentFormDraftId}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("consentFormDraftId")
+		if path, ok := consentFormDraftDetailByID[id]; ok {
+			serveFixture(path)(w, r)
+		} else {
+			serveFixture("fixtures/consent_form_draft.json")(w, r)
+		}
+	})
 	mux.HandleFunc("GET /api/web/2/staff/consentForms/{consentFormId}", func(w http.ResponseWriter, r *http.Request) {
 		path, ok := consentFormDetailByID[r.PathValue("consentFormId")]
 		if !ok {

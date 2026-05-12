@@ -112,13 +112,13 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
   }
 
   const triggerClass =
-    'inline-flex h-9 min-w-[148px] items-center gap-2 rounded-[14px] border border-input bg-background px-3 text-sm text-left font-normal transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
+    'inline-flex h-9 flex-1 items-center gap-2 rounded-[14px] border border-input bg-background px-3 text-sm text-left font-normal transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50';
 
   return (
     <div className="space-y-3">
       <div>
         <p className="text-sm font-medium">
-          Event Schedule{' '}
+          Event Details{' '}
           <span className="text-xs font-normal text-muted-foreground">(optional)</span>
         </p>
         <p className="text-sm text-muted-foreground">
@@ -129,8 +129,8 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
       <div className="grid gap-3 sm:grid-cols-2">
         {/* Start */}
         <div className="space-y-1.5">
-          <Label>Start (SGT)</Label>
-          <div className="flex flex-wrap gap-2">
+          <Label>Event Start</Label>
+          <div className="flex gap-2">
             <Popover>
               <PopoverTrigger className={triggerClass}>
                 <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -156,7 +156,7 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
               }}
               disabled={!startDate}
             >
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[120px] shrink-0">
                 <SelectValue placeholder="Time" />
               </SelectTrigger>
               <SelectContent>
@@ -172,8 +172,8 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
 
         {/* End */}
         <div className="space-y-1.5">
-          <Label>End (SGT)</Label>
-          <div className="flex flex-wrap gap-2">
+          <Label>Event End</Label>
+          <div className="flex gap-2">
             <Popover>
               <PopoverTrigger className={triggerClass} disabled={!startDate}>
                 <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -199,7 +199,7 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
               }}
               disabled={!startDate}
             >
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[120px] shrink-0">
                 <SelectValue placeholder="Time" />
               </SelectTrigger>
               <SelectContent>

@@ -48,6 +48,7 @@ import type {
   PGApiCustomGroupSummary,
   PGApiDuplicateAnnouncementResponse,
   PGApiDuplicateConsentFormResponse,
+  PGApiGroupTarget,
   PGApiGroupsAssigned,
   PGApiSchoolClass,
   PGApiSchoolStaffList,
@@ -534,6 +535,27 @@ export function duplicateAnnouncementDraft(announcementDraftId: number) {
   });
 }
 
+/** Update enquiry email on a posted announcement. */
+export function updateAnnouncementEnquiryEmail(
+  postId: AnnouncementId,
+  payload: { enquiryEmailAddress: string },
+) {
+  return mutateApi<void>('PUT', `/announcements/${postId}/enquiryEmailAddress`, payload);
+}
+
+/** Replace staff-in-charge on a posted announcement. */
+export function updateAnnouncementStaffInCharge(
+  postId: AnnouncementId,
+  staffIds: number[],
+): Promise<void> {
+  const staffGroups: PGApiGroupTarget[] = staffIds.map((id) => ({
+    type: 'individual',
+    label: '',
+    value: id,
+  }));
+  return mutateApi('POST', `/announcements/${postId}/addStaffInCharge`, { staffGroups });
+}
+
 /** Delete a posted announcement. */
 export function deleteAnnouncement(postId: AnnouncementId) {
   return deleteApi(`/announcements/${postId}`);
@@ -711,6 +733,29 @@ export function deleteConsentFormDraft(draftId: number) {
   return deleteApi(`/consentForms/drafts/${draftId}`);
 }
 
+/** Update enquiry email on a posted consent form. */
+export function updateConsentFormEnquiryEmail(
+  formId: ConsentFormId,
+  payload: { enquiryEmailAddress: string },
+) {
+  const numericId = formId.slice(3);
+  return mutateApi<void>('PUT', `/consentForms/${numericId}/updateEnquiryEmail`, payload);
+}
+
+/** Replace staff-in-charge on a posted consent form. */
+export function updateConsentFormStaffInCharge(
+  formId: ConsentFormId,
+  staffIds: number[],
+): Promise<void> {
+  const numericId = formId.slice(3);
+  const staffGroups: PGApiGroupTarget[] = staffIds.map((id) => ({
+    type: 'individual',
+    label: '',
+    value: id,
+  }));
+  return mutateApi('POST', `/consentForms/${numericId}/addStaffInCharge`, { staffGroups });
+}
+
 // ─── Composed loaders ───────────────────────────────────────────────────────
 
 /** Consent-form list loader that returns the unified `PGConsentFormPost[]` shape. */
@@ -804,7 +849,9 @@ function mapPgwCustomGroup(raw: PgwRawCustomGroup): PGApiCustomGroupSummary {
 
 export async function fetchCustomGroups(): Promise<PGApiCustomGroupsList> {
   const raw = await fetchApi<PgwRawCustomGroup[]>('/groups/custom');
-  return { customGroups: raw.map(mapPgwCustomGroup) };
+  // Guard: real PGW returns a bare array; be defensive in case the shape differs.
+  const list = Array.isArray(raw) ? raw : [];
+  return { customGroups: list.map(mapPgwCustomGroup) };
 }
 
 interface PgwRawCustomGroupDetail {

@@ -1,6 +1,6 @@
 import { AlertTriangle, Copy, MoreHorizontal, Plus, Search, Trash2, Users } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Link, useLoaderData, useNavigate, useRevalidator } from 'react-router';
+import { Link, useLoaderData, useNavigate, useRevalidator, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import {
@@ -166,7 +166,8 @@ const PostsView: React.FC = () => {
   const { rows: posts, configs } = useLoaderData<PostsLoaderData>();
   const revalidator = useRevalidator();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<PostTab>('with-responses');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (searchParams.get('tab') as PostTab | null) ?? 'with-responses';
   const [filters, setFilters] = useState<PostFilters>(DEFAULT_POST_FILTERS);
   const [searchQuery, setSearchQuery] = useState('');
   // `duplicate_announcement_form_post` gates the Duplicate row action in
@@ -297,7 +298,7 @@ const PostsView: React.FC = () => {
       {/* Toolbar: view selector + search + filter */}
       <div className="space-y-4 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3 px-6">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as PostTab)}>
+          <Tabs value={tab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
             <TabsList>
               <TabsTrigger value="view-only">View only</TabsTrigger>
               <TabsTrigger value="with-responses">With responses</TabsTrigger>
@@ -450,16 +451,17 @@ const PostRowInner: React.FC<PostRowProps> = ({ row, duplicateEnabled, onDuplica
     isLowReadRate(row.postedAt, row.stats.readCount, row.stats.totalCount);
 
   // PGW disables row clicks for scheduled posts — there's no public detail
-  // endpoint for them (`retrieveAnnouncementDraftFullDetailsForStaff` filters
-  // status=DRAFT only). Teachers act on scheduled rows via the kebab menu
-  // (Reschedule / Cancel schedule).
-  const clickable = row.status !== 'scheduled' && row.status !== 'posting';
+  // endpoint for them. Exception: scheduled posts whose send failed are
+  // clickable so teachers can edit and reschedule.
+  const hasSendFailure = Boolean(row.scheduledSendFailureCode);
+  const clickable = (row.status !== 'scheduled' && row.status !== 'posting') || hasSendFailure;
+  // Failed-scheduled posts go straight to edit; drafts go to edit; everything
+  // else goes to the detail view.
+  const goToEdit = row.status === 'draft' || hasSendFailure;
   return (
     <TableRow
       className={clickable ? 'cursor-pointer' : 'cursor-default'}
-      onClick={
-        clickable ? () => navigate(postHref(row, { edit: row.status === 'draft' })) : undefined
-      }
+      onClick={clickable ? () => navigate(postHref(row, { edit: goToEdit })) : undefined}
     >
       {/* Title + description stacked */}
       <TableCell className="overflow-hidden pl-6 align-top whitespace-normal">

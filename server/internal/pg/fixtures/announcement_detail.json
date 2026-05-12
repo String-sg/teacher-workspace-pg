@@ -70,10 +70,51 @@
     ],
     "staffOwners": [{ "staffID": 1013, "staffName": "TAN GUANG SHIN" }],
     "students": [
-      { "studentId": 1, "studentName": "TAN XIAO MING", "className": "4A", "isRead": true },
-      { "studentId": 2, "studentName": "LEE WEI LIANG", "className": "4A", "isRead": true },
+      {
+        "studentId": 1,
+        "studentName": "TAN XIAO MING",
+        "className": "4A",
+        "isRead": true,
+        "readStatus": "READ"
+      },
+      {
+        "studentId": 2,
+        "studentName": "LEE WEI LIANG",
+        "className": "4A",
+        "isRead": true,
+        "readStatus": "READ"
+      },
       { "studentId": 3, "studentName": "CAROL CHEN HUI", "className": "4A", "isRead": false },
-      { "studentId": 4, "studentName": "DAVID NG JUN WEI", "className": "4A", "isRead": false }
+      { "studentId": 4, "studentName": "DAVID NG JUN WEI", "className": "4A", "isRead": false },
+      {
+        "studentId": 5,
+        "studentName": "EMILY WONG SHU HUI",
+        "className": "4B",
+        "isRead": true,
+        "readStatus": "READ"
+      },
+      {
+        "studentId": 6,
+        "studentName": "MUHAMMAD HAFIZ BIN AZIZ",
+        "className": "4B",
+        "isRead": false
+      },
+      {
+        "studentId": 7,
+        "studentName": "PRIYA KRISHNAMURTHY",
+        "className": "4B",
+        "isRead": true,
+        "readStatus": "READ"
+      },
+      { "studentId": 8, "studentName": "GOH KAI JIE", "className": "4C", "isRead": false },
+      { "studentId": 9, "studentName": "LIM ZHEN YU", "className": "4C", "isRead": false },
+      {
+        "studentId": 10,
+        "studentName": "NURUL AIN BTE RAHMAT",
+        "className": "4C",
+        "isRead": true,
+        "readStatus": "READ"
+      }
     ],
     "status": "POSTED",
     "scheduledSendAt": null,
