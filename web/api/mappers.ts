@@ -247,10 +247,19 @@ export function mapAnnouncementDetail(detail: PGApiAnnouncementDetail): PGAnnoun
  * Extend as shapes become verifiable.
  */
 export function mapAnnouncementDraftDetail(draft: PGApiAnnouncementDraft): PGAnnouncementPost {
-  const richTextContent =
-    draft.richTextContent && typeof draft.richTextContent === 'string'
-      ? (JSON.parse(draft.richTextContent) as Record<string, unknown>)
-      : null;
+  // richTextContent arrives as a JSON-encoded string on real PGW; the mock
+  // fixture may supply it as an already-parsed object — handle both.
+  const richTextContent: Record<string, unknown> | null =
+    draft.richTextContent == null
+      ? null
+      : typeof draft.richTextContent === 'string'
+        ? (JSON.parse(draft.richTextContent) as Record<string, unknown>)
+        : (draft.richTextContent as Record<string, unknown>);
+
+  // Scheduled drafts that failed to send stay in the draft table with
+  // status=SCHEDULED. Derive the frontend status from the wire field so that
+  // `isFailedScheduledEdit` in CreatePostView can identify them correctly.
+  const status: PGStatus = draft.status === 'SCHEDULED' ? 'scheduled' : 'draft';
 
   return {
     kind: 'announcement',
@@ -258,7 +267,7 @@ export function mapAnnouncementDraftDetail(draft: PGApiAnnouncementDraft): PGAnn
     title: draft.title,
     description: richTextContent ? extractTextFromTiptap(richTextContent) : '',
     richTextContent,
-    status: 'draft',
+    status,
     responseType: 'view-only',
     ownership: 'mine',
     recipients: [],
@@ -272,6 +281,7 @@ export function mapAnnouncementDraftDetail(draft: PGApiAnnouncementDraft): PGAnn
     createdAt: draft.updatedAt,
     createdBy: '',
     scheduledAt: draft.scheduledDateTime ?? undefined,
+    scheduledSendFailureCode: draft.scheduledSendFailureCode ?? null,
   };
 }
 

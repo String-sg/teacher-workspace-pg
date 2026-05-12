@@ -1,0 +1,39 @@
+[
+  {
+    "announcementDraftId": 1038,
+    "status": "SCHEDULED",
+    "postedAnnouncementId": null,
+    "title": "Science Centre Learning Journey",
+    "content": null,
+    "richTextContent": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [{ "type": "text", "text": "Dear Parents," }]
+        },
+        {
+          "type": "paragraph",
+          "attrs": { "textAlign": "left" },
+          "content": [
+            {
+              "type": "text",
+              "text": "Your child will be attending the Science Centre Learning Journey on 5 April 2026. Please acknowledge receipt."
+            }
+          ]
+        }
+      ]
+    },
+    "enquiryEmailAddress": "greenridge_sec@moe.edu.sg",
+    "staffGroups": [{ "staffGroupType": "INDIVIDUAL", "staffIds": [1013] }],
+    "studentGroups": [{ "studentGroupType": "CLASS", "studentGroupIds": [101] }],
+    "images": { "images": [], "imagesOrigin": "" },
+    "attachments": [],
+    "urls": [],
+    "shortcuts": [],
+    "updatedAt": "2026-03-20T06:30:00.000Z",
+    "scheduledDateTime": "2026-04-05T00:00:00.000Z",
+    "scheduledSendFailureCode": "UPSTREAM_TIMEOUT"
+  }
+]

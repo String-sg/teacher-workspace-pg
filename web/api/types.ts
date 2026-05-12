@@ -150,11 +150,12 @@ export interface PGApiAnnouncementDetail {
 
 export interface PGApiAnnouncementDraft {
   announcementDraftId: number;
-  status: 'DRAFT';
+  status: 'DRAFT' | 'SCHEDULED';
   postedAnnouncementId: number | null;
   title: string;
   content: string | null;
-  richTextContent: string | null;
+  /** JSON-encoded string from real PGW; already-parsed object from mock. */
+  richTextContent: string | Record<string, unknown> | null;
   enquiryEmailAddress: string;
   staffGroups: unknown[];
   studentGroups: unknown[];
@@ -164,6 +165,8 @@ export interface PGApiAnnouncementDraft {
   shortcuts: unknown[];
   updatedAt: string;
   scheduledDateTime: string | null;
+  /** Set when the scheduled send attempt failed. Mirrors the same field on the detail endpoint. */
+  scheduledSendFailureCode?: string | null;
 }
 
 export interface PGApiConsentFormDraft {

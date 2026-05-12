@@ -23,6 +23,12 @@ var announcementDetailByID = map[string]string{
 	"1040": "fixtures/announcement_detail_shared.json",    // POSTED view-only (shared)
 }
 
+// Draft-detail fixture lookup by draft ID. Falls back to the generic draft
+// fixture for IDs not listed here (plain drafts all share the same shape).
+var announcementDraftDetailByID = map[string]string{
+	"1038": "fixtures/announcement_draft_scheduled_failed.json", // SCHEDULED + send failed
+}
+
 var consentFormDetailByID = map[string]string{
 	"1038": "fixtures/consent_form_detail.json",           // OPEN
 	"1039": "fixtures/consent_form_detail_closed.json",    // CLOSED
@@ -73,7 +79,14 @@ func registerMockAnnouncements(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/web/2/staff/announcements/{first}/{second}", func(w http.ResponseWriter, r *http.Request) {
 		switch r.PathValue("first") {
 		case "drafts", "prefilled":
-			serveFixture("fixtures/announcement_draft.json")(w, r)
+			// Look up a per-ID fixture first (e.g. failed-scheduled drafts carry
+			// extra fields); fall back to the generic draft fixture for plain drafts.
+			id := r.PathValue("second")
+			if path, ok := announcementDraftDetailByID[id]; ok {
+				serveFixture(path)(w, r)
+			} else {
+				serveFixture("fixtures/announcement_draft.json")(w, r)
+			}
 		default:
 			http.NotFound(w, r)
 		}
