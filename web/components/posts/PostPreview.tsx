@@ -365,51 +365,51 @@ const PostPreview = React.memo(function PostPreview({
               </p>
               <p className="text-[11px] text-primary italic">{enquiryContact}</p>
             </div>
-
-            {/* Response section — bottom bar matching PG app layout */}
-            {isForm && (responseType === 'acknowledge' || responseType === 'yes-no') && (
-              <div
-                data-section="response"
-                className="mt-4 flex items-center justify-between gap-3 border-t border-border/40 pt-3"
-              >
-                {/* Left: label + due date */}
-                <div className="min-w-0">
-                  <p className="text-[10px] text-muted-foreground">
-                    {responseType === 'acknowledge' ? 'Please acknowledge by' : 'Please respond by'}
-                  </p>
-                  <p className="text-xs font-semibold text-foreground">{dueDateLabel ?? '—'}</p>
-                </div>
-                {/* Right: action buttons */}
-                {responseType === 'yes-no' && (
-                  <div className="flex shrink-0 gap-1.5">
-                    <button
-                      disabled
-                      className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground"
-                    >
-                      Yes
-                    </button>
-                    <button
-                      disabled
-                      className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-foreground"
-                    >
-                      No
-                    </button>
-                  </div>
-                )}
-                {responseType === 'acknowledge' && (
-                  <button
-                    disabled
-                    className="shrink-0 rounded-full bg-[#c9826b] px-4 py-1.5 text-[11px] font-medium text-white"
-                  >
-                    Acknowledge
-                  </button>
-                )}
-              </div>
-            )}
           </div>
           {/* /px-5 pb-5 */}
         </div>
         {/* /overflow-y-auto */}
+
+        {/* Response bar — sticky to bottom of phone frame, outside the scroll area */}
+        {isForm && (responseType === 'acknowledge' || responseType === 'yes-no') && (
+          <div
+            data-section="response"
+            className="flex shrink-0 items-center justify-between gap-3 border-t border-border/40 bg-white px-5 py-3"
+          >
+            {/* Left: label + due date */}
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground">
+                {responseType === 'acknowledge' ? 'Please acknowledge by' : 'Please respond by'}
+              </p>
+              <p className="text-xs font-semibold text-foreground">{dueDateLabel ?? '—'}</p>
+            </div>
+            {/* Right: action buttons */}
+            {responseType === 'yes-no' && (
+              <div className="flex shrink-0 gap-1.5">
+                <button
+                  disabled
+                  className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground"
+                >
+                  Yes
+                </button>
+                <button
+                  disabled
+                  className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-foreground"
+                >
+                  No
+                </button>
+              </div>
+            )}
+            {responseType === 'acknowledge' && (
+              <button
+                disabled
+                className="shrink-0 rounded-full bg-[#c9826b] px-4 py-1.5 text-[11px] font-medium text-white"
+              >
+                Acknowledge
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ── Gallery overlay ─────────────────────────────────────────────── */}
         {galleryOpen && readyPhotos.length > 0 && (
