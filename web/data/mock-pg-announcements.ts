@@ -201,6 +201,10 @@ export interface PGConsentFormRecipient {
   respondedAt: string | null;
   /** Name of the parent/guardian who submitted the consent reply. Null when no response yet. */
   replyByParent?: string | null;
+  /** Relationship of the responding parent/guardian (e.g. "Mother", "Father", "Guardian"). */
+  parentType?: string | null;
+  /** Mobile contact number of the responding parent/guardian. */
+  contactNumber?: string | null;
   /**
    * Onboarding state on the Parents Gateway side. Derived from
    * `PGApiConsentFormStudent.onBoardedCategory`: any non-empty category maps

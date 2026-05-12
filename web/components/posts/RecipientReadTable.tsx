@@ -353,6 +353,14 @@ function UnifiedTable({
               ? (recipient as PGConsentFormRecipient).indexNumber
               : undefined;
           const replyByParent = (recipient as PGRecipient | PGConsentFormRecipient).replyByParent;
+          const parentType =
+            'parentType' in recipient
+              ? (recipient as PGConsentFormRecipient).parentType
+              : undefined;
+          const contactNumber =
+            'contactNumber' in recipient
+              ? (recipient as PGConsentFormRecipient).contactNumber
+              : undefined;
           const pgStatus =
             'pgStatus' in recipient ? (recipient as PGConsentFormRecipient).pgStatus : undefined;
 
@@ -376,7 +384,20 @@ function UnifiedTable({
                 </TableCell>
               )}
               {columns.parentGuardian && (
-                <TableCell className="text-muted-foreground">{replyByParent ?? '—'}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {replyByParent ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span>{replyByParent}</span>
+                      {(parentType || contactNumber) && (
+                        <span className="text-xs text-muted-foreground/70">
+                          {[parentType, contactNumber].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    '—'
+                  )}
+                </TableCell>
               )}
               {columns.pgStatus && isForm && (
                 <TableCell>
@@ -421,6 +442,10 @@ function rowToCsv(
   const indexNo =
     'indexNumber' in recipient ? ((recipient as PGConsentFormRecipient).indexNumber ?? '') : '';
   const replyByParent = (recipient as PGRecipient | PGConsentFormRecipient).replyByParent ?? '';
+  const parentType =
+    'parentType' in recipient ? ((recipient as PGConsentFormRecipient).parentType ?? '') : '';
+  const contactNumber =
+    'contactNumber' in recipient ? ((recipient as PGConsentFormRecipient).contactNumber ?? '') : '';
   const pgStatus = isForm
     ? (recipient as PGConsentFormRecipient).pgStatus === 'onboarded'
       ? 'Onboarded'
@@ -433,6 +458,8 @@ function rowToCsv(
     status: statusLabels[status],
     timestamp: ts ? (formatDate(ts) ?? '') : '',
     parentGuardian: replyByParent,
+    parentType,
+    contactNumber,
     pgStatus,
   };
 }
@@ -447,7 +474,13 @@ function buildCsvColumns(
   out.push({ key: 'classLabel', header: 'Class' });
   out.push({ key: 'status', header: 'Status' });
   if (columns.timestamp) out.push({ key: 'timestamp', header: tsLabel });
-  if (columns.parentGuardian) out.push({ key: 'parentGuardian', header: 'Parent / Guardian' });
+  if (columns.parentGuardian) {
+    out.push({ key: 'parentGuardian', header: 'Parent / Guardian' });
+    if (isForm) {
+      out.push({ key: 'parentType', header: 'Relationship' });
+      out.push({ key: 'contactNumber', header: 'Contact No.' });
+    }
+  }
   if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'PG Status' });
   return out;
 }

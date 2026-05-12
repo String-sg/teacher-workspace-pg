@@ -31,6 +31,10 @@ export interface PGApiConsentFormStudent {
   reply: 'YES' | 'NO' | null;
   replyDate: string | null;
   replyByParent: string | null;
+  /** Relationship of the responding parent/guardian to the student (e.g. "Mother", "Father", "Guardian"). */
+  parentType?: string | null;
+  /** Mobile number of the responding parent/guardian. */
+  contactNumber?: string | null;
   remarks: string | null;
   isIndividual: boolean;
   onBoardedCategory?: string;

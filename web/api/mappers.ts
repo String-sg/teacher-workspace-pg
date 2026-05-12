@@ -519,6 +519,8 @@ export function mapConsentFormDetail(detail: PGApiConsentFormDetail): PGConsentF
     response: r.reply,
     respondedAt: r.replyDate,
     replyByParent: r.replyByParent,
+    parentType: r.parentType ?? null,
+    contactNumber: r.contactNumber ?? null,
     pgStatus: r.onBoardedCategory && r.onBoardedCategory.length > 0 ? 'onboarded' : 'not-onboarded',
   }));
 
