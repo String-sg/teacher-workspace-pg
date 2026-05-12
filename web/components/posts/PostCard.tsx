@@ -89,7 +89,7 @@ export function PostCard({
   const [sheetTargetLabel, setSheetTargetLabel] = useState('');
 
   const isForm = post.kind === 'form';
-  const kindLabel = isForm ? 'Consent form' : 'Announcement';
+  const kindLabel = 'Post';
 
   // `event.start` / `event.end` arrive as SGT-anchored ISO-8601 from the detail
   // mapper (see `mapConsentFormDetail`), so `formatDateTime` renders them in

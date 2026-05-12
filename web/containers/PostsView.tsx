@@ -1,6 +1,6 @@
 import { AlertTriangle, Copy, MoreHorizontal, Plus, Search, Trash2, Users } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Link, useLoaderData, useNavigate, useRevalidator } from 'react-router';
+import { Link, useLoaderData, useNavigate, useRevalidator, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import {
@@ -166,7 +166,8 @@ const PostsView: React.FC = () => {
   const { rows: posts, configs } = useLoaderData<PostsLoaderData>();
   const revalidator = useRevalidator();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<PostTab>('with-responses');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (searchParams.get('tab') as PostTab | null) ?? 'with-responses';
   const [filters, setFilters] = useState<PostFilters>(DEFAULT_POST_FILTERS);
   const [searchQuery, setSearchQuery] = useState('');
   // `duplicate_announcement_form_post` gates the Duplicate row action in
@@ -297,7 +298,7 @@ const PostsView: React.FC = () => {
       {/* Toolbar: view selector + search + filter */}
       <div className="space-y-4 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3 px-6">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as PostTab)}>
+          <Tabs value={tab} onValueChange={(v) => setSearchParams({ tab: v }, { replace: true })}>
             <TabsList>
               <TabsTrigger value="view-only">View only</TabsTrigger>
               <TabsTrigger value="with-responses">With responses</TabsTrigger>

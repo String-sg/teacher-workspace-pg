@@ -105,6 +105,7 @@ export async function loader({
 
 export function ErrorBoundary() {
   const error = useRouteError();
+  const navigate = useNavigate();
   // 404s arrive in two shapes: (a) a loader-thrown `Response(404)` for malformed
   // IDs that fail `validatePostRoute`, which hits `isRouteErrorResponse`; and
   // (b) a server 404 that bubbles up as `PGNotFoundError` from the fetch layer
@@ -123,7 +124,7 @@ export function ErrorBoundary() {
           ? 'This post may have been deleted.'
           : 'The server may be unavailable. Please try again.'}
       </p>
-      <Button variant="secondary" size="sm" render={<Link to="/posts" />} nativeButton={false}>
+      <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
         Back to Posts
       </Button>
     </div>
@@ -240,10 +241,9 @@ function DetailHeader({
         <Button
           variant="ghost"
           size="icon-sm"
-          render={<Link to="/posts" />}
-          nativeButton={false}
           aria-label="Back to Posts"
           className="mt-1"
+          onClick={() => navigate(-1)}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>

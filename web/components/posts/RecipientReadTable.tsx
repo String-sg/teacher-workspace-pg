@@ -341,7 +341,7 @@ function UnifiedTable({
           <TableHead>Class</TableHead>
           <TableHead>Status</TableHead>
           {columns.timestamp && <TableHead>{tsLabel}</TableHead>}
-          {columns.parentGuardian && isForm && <TableHead>Parent/Guardian</TableHead>}
+          {columns.parentGuardian && <TableHead>Parent / Guardian</TableHead>}
           {columns.pgStatus && isForm && <TableHead>PG Status</TableHead>}
         </TableRow>
       </TableHeader>
@@ -352,10 +352,7 @@ function UnifiedTable({
             'indexNumber' in recipient
               ? (recipient as PGConsentFormRecipient).indexNumber
               : undefined;
-          const replyByParent =
-            'replyByParent' in recipient
-              ? (recipient as PGConsentFormRecipient).replyByParent
-              : undefined;
+          const replyByParent = (recipient as PGRecipient | PGConsentFormRecipient).replyByParent;
           const pgStatus =
             'pgStatus' in recipient ? (recipient as PGConsentFormRecipient).pgStatus : undefined;
 
@@ -378,7 +375,7 @@ function UnifiedTable({
                   {ts ? (formatDate(ts) ?? '—') : '—'}
                 </TableCell>
               )}
-              {columns.parentGuardian && isForm && (
+              {columns.parentGuardian && (
                 <TableCell className="text-muted-foreground">{replyByParent ?? '—'}</TableCell>
               )}
               {columns.pgStatus && isForm && (
@@ -423,7 +420,7 @@ function rowToCsv(
   const ts = resolveTimestamp(responseType, recipient);
   const indexNo =
     'indexNumber' in recipient ? ((recipient as PGConsentFormRecipient).indexNumber ?? '') : '';
-  const replyByParent = isForm ? ((recipient as PGConsentFormRecipient).replyByParent ?? '') : '';
+  const replyByParent = (recipient as PGRecipient | PGConsentFormRecipient).replyByParent ?? '';
   const pgStatus = isForm
     ? (recipient as PGConsentFormRecipient).pgStatus === 'onboarded'
       ? 'Onboarded'
@@ -450,8 +447,7 @@ function buildCsvColumns(
   out.push({ key: 'classLabel', header: 'Class' });
   out.push({ key: 'status', header: 'Status' });
   if (columns.timestamp) out.push({ key: 'timestamp', header: tsLabel });
-  if (columns.parentGuardian && isForm)
-    out.push({ key: 'parentGuardian', header: 'Parent/Guardian' });
+  if (columns.parentGuardian) out.push({ key: 'parentGuardian', header: 'Parent / Guardian' });
   if (columns.pgStatus && isForm) out.push({ key: 'pgStatus', header: 'PG Status' });
   return out;
 }
@@ -517,7 +513,7 @@ export function RecipientReadTable(props: RecipientReadTableProps) {
         responseType={responseType}
         showPgStatus={isForm}
         timestampLabel={tsLabel}
-        showParentGuardian={isForm}
+        showParentGuardian={true}
         onExport={handleExport}
       />
 

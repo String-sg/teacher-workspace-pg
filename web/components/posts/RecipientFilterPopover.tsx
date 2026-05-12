@@ -42,11 +42,11 @@ export interface RecipientFilterValue {
   columns: ColumnVisibility;
 }
 
-/** Default column visibility: timestamp + pgStatus on; indexNumber + parentGuardian off. */
+/** Default column visibility: timestamp + parentGuardian + pgStatus on; indexNumber off. */
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   indexNumber: false,
   timestamp: true,
-  parentGuardian: false,
+  parentGuardian: true,
   pgStatus: true,
 };
 

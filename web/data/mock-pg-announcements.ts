@@ -69,6 +69,8 @@ export interface PGRecipient {
   questionAnswers?: Record<string, string>;
   /** PG onboarding state — not surfaced by PGW for announcements today; always `undefined`. */
   pgStatus?: 'onboarded' | 'not-onboarded';
+  /** Name of the parent/guardian who read/responded. Not surfaced by PGW for announcements today; always `undefined`. */
+  replyByParent?: string | null;
 }
 
 export type PGTargetType = 'class' | 'group' | 'cca' | 'level';
