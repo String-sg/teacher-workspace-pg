@@ -512,7 +512,7 @@ function PreviewPhoto({ photo, large = false }: { photo: UploadingFile; large?: 
     return (
       <div
         className={cn(
-          'flex items-center justify-center bg-muted text-muted-foreground',
+          'flex items-center justify-center bg-white text-muted-foreground',
           large ? 'aspect-video w-full' : 'aspect-square rounded-lg',
         )}
       >
