@@ -1105,11 +1105,12 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
       {/* Posted-edit notice banner */}
       {isPostedEdit && (
-        <div className="border-b bg-amber-50 px-6 py-3">
-          <p className="flex items-center gap-2 text-sm text-amber-800">
+        <div className="border-b bg-muted px-6 py-3">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Lock className="h-3.5 w-3.5 shrink-0" />
-            This post has been sent. Only <strong>Staff in charge</strong> and{' '}
-            <strong>Enquiry email</strong> can be changed.
+            This post has been sent. Only{' '}
+            <span className="font-medium text-foreground">Staff in charge</span> and{' '}
+            <span className="font-medium text-foreground">Enquiry email</span> can be changed.
           </p>
         </div>
       )}
@@ -1126,7 +1127,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
               </p>
 
               {/* Students field — locked when editing a sent post */}
-              <fieldset disabled={isPostedEdit} className="contents">
+              <div className={isPostedEdit ? 'pointer-events-none opacity-50 select-none' : ''}>
                 <div className="space-y-1.5">
                   <Label>
                     Students <span className="text-destructive">*</span>
@@ -1145,7 +1146,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                     customGroups={customGroups}
                   />
                 </div>
-              </fieldset>
+              </div>
 
               {/* Staff in charge */}
               <div className="space-y-1.5">
@@ -1189,7 +1190,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
           </Card>
 
           {/* All cards below are locked when editing a sent post */}
-          <fieldset disabled={isPostedEdit} className="contents">
+          <div className={isPostedEdit ? 'pointer-events-none opacity-50 select-none' : 'contents'}>
             {/* CONTENT Card */}
             <Card>
               <CardContent className="space-y-5 p-6">
@@ -1374,7 +1375,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   </CardContent>
                 </Card>
               )}
-          </fieldset>
+          </div>
           {/* end locked-for-posted-edit */}
         </div>
 
