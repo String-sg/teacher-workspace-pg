@@ -17,6 +17,7 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PostFormState, UploadingFile } from '~/containers/CreatePostView';
+import type { FormQuestion } from '~/data/mock-pg-announcements';
 import { formatFileSize } from '~/helpers/attachments';
 import { formatDateTime, formatLocalDate, formatLocalDateTimeRange } from '~/helpers/dateTime';
 import { createRichTextExtensions, extractTextFromTiptap } from '~/helpers/tiptap';
@@ -47,6 +48,74 @@ interface PostPreviewProps {
   currentUserName?: string;
   defaultEnquiryEmail?: string;
   focusSection?: PreviewFocusSection;
+}
+
+/**
+ * Full-screen question-answer view shown inside the phone chrome when the
+ * teacher's focus is on the Custom Questions builder. Matches the PG app's
+ * parent-facing answer UI: progress bar, question text, answer area, submit.
+ * Always shows the first question (index 0).
+ */
+function QuestionScreen({ questions }: { questions: FormQuestion[] }) {
+  const q = questions[0]!;
+  const total = questions.length;
+
+  return (
+    <div className="flex flex-1 flex-col bg-white pt-10">
+      {/* Progress + label */}
+      <div className="px-5 pt-4">
+        <div className="h-0.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full bg-foreground" style={{ width: `${(1 / total) * 100}%` }} />
+        </div>
+        <p className="mt-1.5 text-[10px] text-muted-foreground">Q1 of {total}</p>
+      </div>
+
+      {/* Question text */}
+      <div className="mt-5 px-5">
+        <p className="text-sm leading-snug font-semibold">{q.text || 'Untitled question'}</p>
+      </div>
+
+      {/* Answer area */}
+      <div className="mt-4 flex-1 overflow-y-auto px-5">
+        {q.type === 'free-text' ? (
+          <div className="relative min-h-[120px] rounded-xl border bg-background p-3">
+            <p className="text-xs text-muted-foreground/50">Type your answer here...</p>
+            <p className="absolute right-3 bottom-2 text-[10px] text-muted-foreground">
+              500 characters left
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {q.options.map((opt, oi) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <li
+                key={oi}
+                className="flex items-center gap-3 rounded-xl border bg-background px-4 py-3"
+              >
+                <span className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/40" />
+                <span
+                  className={cn('text-sm', opt ? 'text-foreground' : 'text-muted-foreground/50')}
+                >
+                  {opt || `Option ${oi + 1}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Submit button */}
+      <div className="shrink-0 px-5 pt-3 pb-5">
+        <button
+          disabled
+          type="button"
+          className="w-full rounded-full bg-foreground py-3 text-sm font-semibold text-background"
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+  );
 }
 
 const PostPreview = React.memo(function PostPreview({
@@ -128,6 +197,10 @@ const PostPreview = React.memo(function PostPreview({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // True when the teacher is focused on the custom-questions builder and at
+  // least one question exists — triggers the full-screen question answer view.
+  const showQuestionView = isForm && focusSection === 'questions' && questions.length > 0;
+
   // Scroll the preview pane to the relevant section whenever the teacher's
   // focus moves to a different part of the form.
   useEffect(() => {
@@ -152,263 +225,280 @@ const PostPreview = React.memo(function PostPreview({
           </div>
         </div>
 
-        {/* pt-10 reserves space for the absolute chrome bar when there's no hero photo overlay */}
-        <div
-          ref={scrollContainerRef}
-          className={cn('flex flex-1 flex-col overflow-y-auto', !heroPhoto && 'pt-10')}
-        >
-          {/* Hero photo — full width, overlapped by chrome above, click to open gallery */}
-          {heroPhoto && (
-            <button
-              type="button"
-              className="group relative shrink-0 cursor-pointer overflow-hidden border-0 p-0"
-              onClick={() => {
-                setGalleryOpen(true);
-                setGalleryIndex(0);
-              }}
-              aria-label="Open photo gallery"
-            >
-              <PreviewPhoto photo={heroPhoto} large />
-              {/* Badge: bottom-right, zoom-in icon + count */}
-              {readyPhotos.length > 1 && (
-                <div className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-[13px] font-semibold text-white backdrop-blur-sm">
-                  <ZoomIn className="h-4 w-4" strokeWidth={2} />
-                  {readyPhotos.length} photos
-                </div>
-              )}
-            </button>
-          )}
-
-          {/* Padded content below the photo */}
-          <div className="flex flex-1 flex-col px-5 pb-5">
-            <div data-section="header" className="space-y-0.5 pt-4">
-              <p className={`text-lg leading-tight font-semibold ${dimmedWhenEmpty}`}>
-                {title || titlePlaceholder}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {timestamp} · {currentUserName.toUpperCase()}
-              </p>
-            </div>
-
+        {/* ── Question-answer view (replaces scroll area when questions section is focused) ── */}
+        {showQuestionView ? (
+          <QuestionScreen questions={questions} />
+        ) : (
+          <>
+            {/* pt-10 reserves space for the absolute chrome bar when there's no hero photo overlay */}
             <div
-              className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium tracking-wider uppercase ${
-                recipientSummary ? 'text-foreground' : 'text-muted-foreground/60'
-              }`}
+              ref={scrollContainerRef}
+              className={cn('flex flex-1 flex-col overflow-y-auto', !heroPhoto && 'pt-10')}
             >
-              <User className="h-3 w-3" strokeWidth={2.25} />
-              {recipientSummary ?? 'STUDENT NAME'}
-            </div>
-
-            {/* Venue + event range — inline rows directly under student name, matching PG app */}
-            {isForm && venue && (
-              <div className="mt-1 flex items-start gap-1.5 text-[11px] text-foreground">
-                <MapPin className="mt-px h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={2} />
-                <span>{venue}</span>
-              </div>
-            )}
-            {isForm && eventRange && (
-              <div className="mt-1 flex items-start gap-1.5 text-[11px] font-medium text-primary">
-                <CalendarClock className="mt-px h-3 w-3 shrink-0 text-primary" strokeWidth={2} />
-                <span>{eventRange}</span>
-              </div>
-            )}
-
-            <div className="mt-4 border-t border-border/40" />
-
-            <div data-section="content" className="mt-4 space-y-2">
-              <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                Details
-              </p>
-              {descriptionHtml ? (
-                <div
-                  className="rich-content"
-                  // `generateHTML` serializes a trusted Tiptap schema; Link is
-                  // constrained to http/https/mailto via createRichTextExtensions.
-                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                />
-              ) : description ? (
-                <p className="text-sm whitespace-pre-wrap text-foreground">{description}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground/60">{descriptionPlaceholder}</p>
-              )}
-            </div>
-
-            {/* Shortcuts — divider + tall button rows with trailing chevron, matching PG app */}
-            {enabledShortcuts.length > 0 && (
-              <>
-                <div className="mt-4 border-t border-border/40" />
-                <div data-section="shortcuts" className="mt-4 space-y-2.5">
-                  <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                    Shortcuts
-                  </p>
-                  <ul className="space-y-2">
-                    {enabledShortcuts.map((key) => {
-                      const meta = SHORTCUT_PREVIEW[key]!;
-                      return (
-                        <li
-                          key={key}
-                          className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
-                        >
-                          <span className="text-lg leading-none">{meta.emoji}</span>
-                          <span className="flex-1 text-sm font-medium">{meta.label}</span>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </>
-            )}
-
-            {/* Links — divider + tall button rows: title bold + URL below in blue */}
-            {validLinks.length > 0 && (
-              <>
-                <div className="mt-4 border-t border-border/40" />
-                <div data-section="links" className="mt-4 space-y-2.5">
-                  <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                    Links
-                  </p>
-                  <ul className="space-y-2">
-                    {validLinks.map((link, i) => (
-                      // eslint-disable-next-line react/no-array-index-key
-                      <li
-                        key={i}
-                        className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
-                      >
-                        <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {link.title.trim() || link.url.trim() || 'Untitled link'}
-                          </p>
-                          {link.url.trim() && link.title.trim() && (
-                            <p className="truncate text-xs text-primary">{link.url.trim()}</p>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-
-            {/* Attachments — divider + tall button rows: filename bold + size below */}
-            {readyAttachments.length > 0 && (
-              <>
-                <div className="mt-4 border-t border-border/40" />
-                <div data-section="attachments" className="mt-4 space-y-2.5">
-                  <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
-                    Attachments
-                  </p>
-                  <ul className="space-y-2">
-                    {readyAttachments.map((f) => (
-                      <li
-                        key={f.localId}
-                        className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
-                      >
-                        <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{f.name}</p>
-                          <p className="text-xs text-muted-foreground">{formatFileSize(f.size)}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-
-            {questions.length > 0 && (
-              <div data-section="questions" className="mt-5 space-y-4 border-t pt-4">
-                {questions.map((q, i) => (
-                  <div key={q.id} className="space-y-2">
-                    {/* Question label */}
-                    <div>
-                      <p className="text-sm font-semibold">
-                        <span className="text-destructive">* </span>
-                        {i + 1}. {q.text || 'Untitled question'}
-                      </p>
-                      {q.description && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{q.description}</p>
-                      )}
+              {/* Hero photo — full width, overlapped by chrome above, click to open gallery */}
+              {heroPhoto && (
+                <button
+                  type="button"
+                  className="group relative shrink-0 cursor-pointer overflow-hidden border-0 p-0"
+                  onClick={() => {
+                    setGalleryOpen(true);
+                    setGalleryIndex(0);
+                  }}
+                  aria-label="Open photo gallery"
+                >
+                  <PreviewPhoto photo={heroPhoto} large />
+                  {/* Badge: bottom-right, zoom-in icon + count */}
+                  {readyPhotos.length > 1 && (
+                    <div className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-[13px] font-semibold text-white backdrop-blur-sm">
+                      <ZoomIn className="h-4 w-4" strokeWidth={2} />
+                      {readyPhotos.length} photos
                     </div>
-                    {/* MCQ options */}
-                    {q.type === 'mcq' && q.options.length > 0 && (
-                      <ul className="space-y-1.5">
-                        {q.options.map((opt, oi) => (
+                  )}
+                </button>
+              )}
+
+              {/* Padded content below the photo */}
+              <div className="flex flex-1 flex-col px-5 pb-5">
+                <div data-section="header" className="space-y-0.5 pt-4">
+                  <p className={`text-lg leading-tight font-semibold ${dimmedWhenEmpty}`}>
+                    {title || titlePlaceholder}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {timestamp} · {currentUserName.toUpperCase()}
+                  </p>
+                </div>
+
+                <div
+                  className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium tracking-wider uppercase ${
+                    recipientSummary ? 'text-foreground' : 'text-muted-foreground/60'
+                  }`}
+                >
+                  <User className="h-3 w-3" strokeWidth={2.25} />
+                  {recipientSummary ?? 'STUDENT NAME'}
+                </div>
+
+                {/* Venue + event range — inline rows directly under student name, matching PG app */}
+                {isForm && venue && (
+                  <div className="mt-1 flex items-start gap-1.5 text-[11px] text-foreground">
+                    <MapPin
+                      className="mt-px h-3 w-3 shrink-0 text-muted-foreground"
+                      strokeWidth={2}
+                    />
+                    <span>{venue}</span>
+                  </div>
+                )}
+                {isForm && eventRange && (
+                  <div className="mt-1 flex items-start gap-1.5 text-[11px] font-medium text-primary">
+                    <CalendarClock
+                      className="mt-px h-3 w-3 shrink-0 text-primary"
+                      strokeWidth={2}
+                    />
+                    <span>{eventRange}</span>
+                  </div>
+                )}
+
+                <div className="mt-4 border-t border-border/40" />
+
+                <div data-section="content" className="mt-4 space-y-2">
+                  <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                    Details
+                  </p>
+                  {descriptionHtml ? (
+                    <div
+                      className="rich-content"
+                      // `generateHTML` serializes a trusted Tiptap schema; Link is
+                      // constrained to http/https/mailto via createRichTextExtensions.
+                      dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                    />
+                  ) : description ? (
+                    <p className="text-sm whitespace-pre-wrap text-foreground">{description}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground/60">{descriptionPlaceholder}</p>
+                  )}
+                </div>
+
+                {/* Shortcuts — divider + tall button rows with trailing chevron, matching PG app */}
+                {enabledShortcuts.length > 0 && (
+                  <>
+                    <div className="mt-4 border-t border-border/40" />
+                    <div data-section="shortcuts" className="mt-4 space-y-2.5">
+                      <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                        Shortcuts
+                      </p>
+                      <ul className="space-y-2">
+                        {enabledShortcuts.map((key) => {
+                          const meta = SHORTCUT_PREVIEW[key]!;
+                          return (
+                            <li
+                              key={key}
+                              className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
+                            >
+                              <span className="text-lg leading-none">{meta.emoji}</span>
+                              <span className="flex-1 text-sm font-medium">{meta.label}</span>
+                              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  </>
+                )}
+
+                {/* Links — divider + tall button rows: title bold + URL below in blue */}
+                {validLinks.length > 0 && (
+                  <>
+                    <div className="mt-4 border-t border-border/40" />
+                    <div data-section="links" className="mt-4 space-y-2.5">
+                      <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                        Links
+                      </p>
+                      <ul className="space-y-2">
+                        {validLinks.map((link, i) => (
+                          // eslint-disable-next-line react/no-array-index-key
                           <li
-                            key={oi}
-                            className="flex items-center gap-2.5 rounded-lg border bg-background px-3 py-2 text-xs"
+                            key={i}
+                            className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
                           >
-                            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-muted-foreground/40" />
-                            <span className={opt ? 'text-foreground' : 'text-muted-foreground/50'}>
-                              {opt || `Option ${oi + 1}`}
-                            </span>
+                            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                {link.title.trim() || link.url.trim() || 'Untitled link'}
+                              </p>
+                              {link.url.trim() && link.title.trim() && (
+                                <p className="truncate text-xs text-primary">{link.url.trim()}</p>
+                              )}
+                            </div>
                           </li>
                         ))}
                       </ul>
-                    )}
-                    {/* Free-text answer area */}
-                    {q.type === 'free-text' && (
-                      <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground/60">
-                        Your answer here…
+                    </div>
+                  </>
+                )}
+
+                {/* Attachments — divider + tall button rows: filename bold + size below */}
+                {readyAttachments.length > 0 && (
+                  <>
+                    <div className="mt-4 border-t border-border/40" />
+                    <div data-section="attachments" className="mt-4 space-y-2.5">
+                      <p className="text-[11px] font-medium tracking-widest text-muted-foreground uppercase">
+                        Attachments
+                      </p>
+                      <ul className="space-y-2">
+                        {readyAttachments.map((f) => (
+                          <li
+                            key={f.localId}
+                            className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5"
+                          >
+                            <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{f.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatFileSize(f.size)}
+                              </p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
+                )}
+
+                {questions.length > 0 && (
+                  <div data-section="questions" className="mt-5 space-y-4 border-t pt-4">
+                    {questions.map((q, i) => (
+                      <div key={q.id} className="space-y-2">
+                        {/* Question label */}
+                        <div>
+                          <p className="text-sm font-semibold">
+                            <span className="text-destructive">* </span>
+                            {i + 1}. {q.text || 'Untitled question'}
+                          </p>
+                          {q.description && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">{q.description}</p>
+                          )}
+                        </div>
+                        {/* MCQ options */}
+                        {q.type === 'mcq' && q.options.length > 0 && (
+                          <ul className="space-y-1.5">
+                            {q.options.map((opt, oi) => (
+                              <li
+                                key={oi}
+                                className="flex items-center gap-2.5 rounded-lg border bg-background px-3 py-2 text-xs"
+                              >
+                                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-muted-foreground/40" />
+                                <span
+                                  className={opt ? 'text-foreground' : 'text-muted-foreground/50'}
+                                >
+                                  {opt || `Option ${oi + 1}`}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {/* Free-text answer area */}
+                        {q.type === 'free-text' && (
+                          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground/60">
+                            Your answer here…
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Enquiry contact */}
-            <div className="mt-auto pt-6 text-center">
-              <p className="text-[11px] text-muted-foreground italic">
-                For enquiries on this post, please contact
-              </p>
-              <p className="text-[11px] text-primary italic">{enquiryContact}</p>
-            </div>
-          </div>
-          {/* /px-5 pb-5 */}
-        </div>
-        {/* /overflow-y-auto */}
-
-        {/* Response bar — sticky to bottom of phone frame, outside the scroll area */}
-        {isForm && (responseType === 'acknowledge' || responseType === 'yes-no') && (
-          <div
-            data-section="response"
-            className="flex shrink-0 items-center justify-between gap-3 border-t border-border/40 bg-white px-5 py-3"
-          >
-            {/* Left: label + due date */}
-            <div className="min-w-0">
-              <p className="text-[10px] text-muted-foreground">
-                {responseType === 'acknowledge' ? 'Please acknowledge by' : 'Please respond by'}
-              </p>
-              <p className="text-xs font-semibold text-foreground">{dueDateLabel ?? '—'}</p>
-            </div>
-            {/* Right: action buttons */}
-            {responseType === 'yes-no' && (
-              <div className="flex shrink-0 gap-1.5">
-                <button
-                  disabled
-                  className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground"
-                >
-                  Yes
-                </button>
-                <button
-                  disabled
-                  className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-foreground"
-                >
-                  No
-                </button>
+                {/* Enquiry contact */}
+                <div className="mt-auto pt-6 text-center">
+                  <p className="text-[11px] text-muted-foreground italic">
+                    For enquiries on this post, please contact
+                  </p>
+                  <p className="text-[11px] text-primary italic">{enquiryContact}</p>
+                </div>
               </div>
-            )}
-            {responseType === 'acknowledge' && (
-              <button
-                disabled
-                className="shrink-0 rounded-full bg-[#c9826b] px-4 py-1.5 text-[11px] font-medium text-white"
+              {/* /px-5 pb-5 */}
+            </div>
+            {/* /overflow-y-auto */}
+
+            {/* Response bar — sticky to bottom of phone frame, outside the scroll area */}
+            {isForm && (responseType === 'acknowledge' || responseType === 'yes-no') && (
+              <div
+                data-section="response"
+                className="flex shrink-0 items-center justify-between gap-3 border-t border-border/40 bg-white px-5 py-3"
               >
-                Acknowledge
-              </button>
+                {/* Left: label + due date */}
+                <div className="min-w-0">
+                  <p className="text-[10px] text-muted-foreground">
+                    {responseType === 'acknowledge' ? 'Please acknowledge by' : 'Please respond by'}
+                  </p>
+                  <p className="text-xs font-semibold text-foreground">{dueDateLabel ?? '—'}</p>
+                </div>
+                {/* Right: action buttons */}
+                {responseType === 'yes-no' && (
+                  <div className="flex shrink-0 gap-1.5">
+                    <button
+                      disabled
+                      className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      disabled
+                      className="rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-foreground"
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+                {responseType === 'acknowledge' && (
+                  <button
+                    disabled
+                    className="shrink-0 rounded-full bg-[#c9826b] px-4 py-1.5 text-[11px] font-medium text-white"
+                  >
+                    Acknowledge
+                  </button>
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
 
         {/* ── Gallery overlay ─────────────────────────────────────────────── */}
