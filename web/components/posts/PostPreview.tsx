@@ -70,9 +70,12 @@ function QuestionScreen({ questions }: { questions: FormQuestion[] }) {
         <p className="mt-1.5 text-[10px] text-muted-foreground">Q1 of {total}</p>
       </div>
 
-      {/* Question text */}
-      <div className="mt-5 px-5">
+      {/* Question text + optional helper */}
+      <div className="mt-5 space-y-1 px-5">
         <p className="text-sm leading-snug font-semibold">{q.text || 'Untitled question'}</p>
+        {q.description && (
+          <p className="text-xs leading-snug text-muted-foreground">{q.description}</p>
+        )}
       </div>
 
       {/* Answer area */}
@@ -197,9 +200,22 @@ const PostPreview = React.memo(function PostPreview({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // True when the teacher is focused on the custom-questions builder and at
-  // least one question exists — triggers the full-screen question answer view.
-  const showQuestionView = isForm && focusSection === 'questions' && questions.length > 0;
+  // Tracks whether the teacher dismissed the question view by tapping the back
+  // chevron. Reset to false whenever focusSection transitions *into* 'questions'
+  // from a different section so re-focusing the builder brings the view back.
+  const [questionViewDismissed, setQuestionViewDismissed] = useState(false);
+  const prevFocusRef = useRef(focusSection);
+  useEffect(() => {
+    if (prevFocusRef.current !== 'questions' && focusSection === 'questions') {
+      setQuestionViewDismissed(false);
+    }
+    prevFocusRef.current = focusSection;
+  }, [focusSection]);
+
+  // True when the teacher is focused on the custom-questions builder, at least
+  // one question exists, and they haven't tapped the back chevron to dismiss.
+  const showQuestionView =
+    isForm && focusSection === 'questions' && questions.length > 0 && !questionViewDismissed;
 
   // Scroll the preview pane to the relevant section whenever the teacher's
   // focus moves to a different part of the form.
@@ -217,7 +233,18 @@ const PostPreview = React.memo(function PostPreview({
       <div className="relative flex h-[580px] flex-col overflow-hidden rounded-[1.75rem] border-[7px] border-[#1a1f2e] bg-white">
         {/* Mobile chrome — always a frosted white bar so icons stay readable over any content */}
         <div className="absolute inset-x-0 top-0 z-10 flex shrink-0 items-center justify-between rounded-t-[1.3rem] bg-white px-4 py-2.5">
-          <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
+          {showQuestionView ? (
+            <button
+              type="button"
+              aria-label="Back to post"
+              className="flex items-center justify-center"
+              onClick={() => setQuestionViewDismissed(true)}
+            >
+              <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
+            </button>
+          ) : (
+            <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
+          )}
           <div className="flex items-center gap-3 text-foreground">
             <ArrowUp className="h-4 w-4" strokeWidth={2} />
             <ArrowDown className="h-4 w-4" strokeWidth={2} />
