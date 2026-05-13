@@ -12,9 +12,11 @@ const MAX_MCQ_OPTIONS = 6;
 interface QuestionBuilderProps {
   questions: FormQuestion[];
   dispatch: React.Dispatch<PostFormAction>;
+  /** Called with the 0-based index of whichever question card just received focus. */
+  onQuestionFocus?: (index: number) => void;
 }
 
-function QuestionBuilder({ questions, dispatch }: QuestionBuilderProps) {
+function QuestionBuilder({ questions, dispatch, onQuestionFocus }: QuestionBuilderProps) {
   if (questions.length === 0) {
     return (
       <button
@@ -37,7 +39,12 @@ function QuestionBuilder({ questions, dispatch }: QuestionBuilderProps) {
   return (
     <div className="space-y-4">
       {questions.map((question, index) => (
-        <div key={question.id} className="space-y-3 rounded-xl border p-4">
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        <div
+          key={question.id}
+          className="space-y-3 rounded-xl border p-4"
+          onFocus={() => onQuestionFocus?.(index)}
+        >
           <div className="flex items-start gap-2">
             <div className="flex-1 space-y-2">
               <Input

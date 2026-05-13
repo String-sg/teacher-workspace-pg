@@ -48,26 +48,37 @@ interface PostPreviewProps {
   currentUserName?: string;
   defaultEnquiryEmail?: string;
   focusSection?: PreviewFocusSection;
+  /** 0-based index of the question card currently being edited. */
+  focusQuestionIndex?: number;
 }
 
 /**
  * Full-screen question-answer view shown inside the phone chrome when the
  * teacher's focus is on the Custom Questions builder. Matches the PG app's
  * parent-facing answer UI: progress bar, question text, answer area, submit.
- * Always shows the first question (index 0).
  */
-function QuestionScreen({ questions }: { questions: FormQuestion[] }) {
-  const q = questions[0]!;
+function QuestionScreen({
+  questions,
+  activeIndex,
+}: {
+  questions: FormQuestion[];
+  activeIndex: number;
+}) {
+  const safeIndex = Math.max(0, Math.min(activeIndex, questions.length - 1));
+  const q = questions[safeIndex]!;
   const total = questions.length;
+  const current = safeIndex + 1;
 
   return (
     <div className="flex flex-1 flex-col bg-white pt-10">
       {/* Progress + label */}
       <div className="px-5 pt-4">
         <div className="h-0.5 w-full overflow-hidden rounded-full bg-muted">
-          <div className="h-full bg-foreground" style={{ width: `${(1 / total) * 100}%` }} />
+          <div className="h-full bg-foreground" style={{ width: `${(current / total) * 100}%` }} />
         </div>
-        <p className="mt-1.5 text-[10px] text-muted-foreground">Q1 of {total}</p>
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
+          Q{current} of {total}
+        </p>
       </div>
 
       {/* Question text + optional helper */}
@@ -126,6 +137,7 @@ const PostPreview = React.memo(function PostPreview({
   currentUserName = 'Daniel Tan',
   defaultEnquiryEmail = 'enquiry@school.edu.sg',
   focusSection,
+  focusQuestionIndex = 0,
 }: PostPreviewProps) {
   const {
     kind,
@@ -204,6 +216,9 @@ const PostPreview = React.memo(function PostPreview({
   // chevron. Reset to false whenever focusSection transitions *into* 'questions'
   // from a different section so re-focusing the builder brings the view back.
   const [questionViewDismissed, setQuestionViewDismissed] = useState(false);
+  // Which question the preview is currently showing (can diverge from
+  // focusQuestionIndex when the teacher navigates with the chrome arrows).
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(focusQuestionIndex);
   const prevFocusRef = useRef(focusSection);
   useEffect(() => {
     if (prevFocusRef.current !== 'questions' && focusSection === 'questions') {
@@ -211,6 +226,10 @@ const PostPreview = React.memo(function PostPreview({
     }
     prevFocusRef.current = focusSection;
   }, [focusSection]);
+  // Sync preview to whichever question card the teacher just focused.
+  useEffect(() => {
+    setActiveQuestionIndex(focusQuestionIndex);
+  }, [focusQuestionIndex]);
 
   // True when the teacher is focused on the custom-questions builder, at least
   // one question exists, and they haven't tapped the back chevron to dismiss.
@@ -246,15 +265,53 @@ const PostPreview = React.memo(function PostPreview({
             <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
           )}
           <div className="flex items-center gap-3 text-foreground">
-            <ArrowUp className="h-4 w-4" strokeWidth={2} />
-            <ArrowDown className="h-4 w-4" strokeWidth={2} />
+            {showQuestionView ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Previous question"
+                  className={cn(
+                    'flex items-center justify-center',
+                    activeQuestionIndex === 0 ? 'opacity-30' : 'cursor-pointer',
+                  )}
+                  onClick={() => {
+                    if (activeQuestionIndex > 0) {
+                      setActiveQuestionIndex((i) => i - 1);
+                    } else {
+                      setQuestionViewDismissed(true);
+                    }
+                  }}
+                >
+                  <ArrowUp className="h-4 w-4" strokeWidth={2} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next question"
+                  className={cn(
+                    'flex items-center justify-center',
+                    activeQuestionIndex >= questions.length - 1
+                      ? 'cursor-not-allowed opacity-30'
+                      : 'cursor-pointer',
+                  )}
+                  disabled={activeQuestionIndex >= questions.length - 1}
+                  onClick={() => setActiveQuestionIndex((i) => i + 1)}
+                >
+                  <ArrowDown className="h-4 w-4" strokeWidth={2} />
+                </button>
+              </>
+            ) : (
+              <>
+                <ArrowUp className="h-4 w-4" strokeWidth={2} />
+                <ArrowDown className="h-4 w-4" strokeWidth={2} />
+              </>
+            )}
             <MoreHorizontal className="h-4 w-4" strokeWidth={2} />
           </div>
         </div>
 
         {/* ── Question-answer view (replaces scroll area when questions section is focused) ── */}
         {showQuestionView ? (
-          <QuestionScreen questions={questions} />
+          <QuestionScreen questions={questions} activeIndex={activeQuestionIndex} />
         ) : (
           <>
             {/* pt-10 reserves space for the absolute chrome bar when there's no hero photo overlay */}
