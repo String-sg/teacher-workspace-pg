@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { SelectedEntity } from '~/components/comms/entity-selector';
 import type { ReminderConfig } from '~/data/mock-pg-announcements';
 
-import { isCreatePostFormValid } from './createPostValidation';
+import { getWebsiteLinkErrors, isCreatePostFormValid } from './createPostValidation';
 import type { PostFormState } from './CreatePostView';
 
 const recipient: SelectedEntity = {
@@ -87,5 +87,77 @@ describe('isCreatePostFormValid — post-with-response (form)', () => {
     // PGW allows NONE as a valid reminder choice.
     const reminder: ReminderConfig = { type: 'NONE' };
     expect(isCreatePostFormValid({ ...formBase, reminder }, 'post-with-response')).toBe(true);
+  });
+});
+
+describe('getWebsiteLinkErrors', () => {
+  it('returns no errors when both fields are empty', () => {
+    expect(getWebsiteLinkErrors({ url: '', title: '' })).toEqual({});
+  });
+
+  it('returns no errors when both fields are filled with valid URL', () => {
+    expect(getWebsiteLinkErrors({ url: 'https://example.com', title: 'Example' })).toEqual({});
+  });
+
+  it('requires title when only URL is filled', () => {
+    const errors = getWebsiteLinkErrors({ url: 'https://example.com', title: '' });
+    expect(errors.title).toBe('Description is required.');
+    expect(errors.url).toBeUndefined();
+  });
+
+  it('requires URL when only title is filled', () => {
+    const errors = getWebsiteLinkErrors({ url: '', title: 'My link' });
+    expect(errors.url).toBe('URL is required.');
+    expect(errors.title).toBeUndefined();
+  });
+
+  it('rejects invalid URL format', () => {
+    const errors = getWebsiteLinkErrors({ url: 'not-a-url', title: 'My link' });
+    expect(errors.url).toBe('Please enter a valid URL.');
+  });
+
+  it('rejects non-http(s) protocols', () => {
+    const errors = getWebsiteLinkErrors({ url: 'ftp://files.example.com', title: 'FTP' });
+    expect(errors.url).toBe('Please enter a valid URL.');
+  });
+
+  it('accepts http URLs', () => {
+    expect(getWebsiteLinkErrors({ url: 'http://example.com', title: 'Example' })).toEqual({});
+  });
+
+  it('treats whitespace-only fields as empty', () => {
+    expect(getWebsiteLinkErrors({ url: '   ', title: '   ' })).toEqual({});
+  });
+});
+
+describe('isCreatePostFormValid — website links', () => {
+  it('fails when a link has URL but no description', () => {
+    const state = { ...validBase, websiteLinks: [{ url: 'https://example.com', title: '' }] };
+    expect(isCreatePostFormValid(state, 'post')).toBe(false);
+  });
+
+  it('fails when a link has description but no URL', () => {
+    const state = { ...validBase, websiteLinks: [{ url: '', title: 'My link' }] };
+    expect(isCreatePostFormValid(state, 'post')).toBe(false);
+  });
+
+  it('fails when URL is invalid', () => {
+    const state = { ...validBase, websiteLinks: [{ url: 'bad-url', title: 'My link' }] };
+    expect(isCreatePostFormValid(state, 'post')).toBe(false);
+  });
+
+  it('passes when all links have both fields with valid URLs', () => {
+    const state = {
+      ...validBase,
+      websiteLinks: [
+        { url: 'https://example.com', title: 'Example' },
+        { url: 'https://school.edu.sg', title: 'School site' },
+      ],
+    };
+    expect(isCreatePostFormValid(state, 'post')).toBe(true);
+  });
+
+  it('passes with empty website links array', () => {
+    expect(isCreatePostFormValid(validBase, 'post')).toBe(true);
   });
 });

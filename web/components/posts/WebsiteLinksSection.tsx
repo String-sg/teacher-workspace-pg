@@ -2,14 +2,8 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { Dispatch } from 'react';
 
 import { Button, Input, Label } from '~/components/ui';
+import type { WebsiteLinkErrors } from '~/containers/createPostValidation';
 
-/**
- * Parity with PG's `webLinkList`: up to 3 rows of `{url, title}`. Both fields
- * are free-text; we don't validate URL shape client-side because PG does on
- * write and the teacher may paste non-HTTP URLs (e.g. `tel:`). Rendered in
- * both the Post and Post-with-Responses tiles — the outbound mapper forwards
- * into `webLinkList` for both kinds.
- */
 const MAX_WEBSITE_LINKS = 3;
 const MAX_LINK_DESCRIPTION_LENGTH = 40;
 
@@ -33,9 +27,10 @@ export type WebsiteLinksAction =
 interface WebsiteLinksSectionProps {
   value: WebsiteLink[];
   dispatch: Dispatch<WebsiteLinksAction>;
+  errors?: WebsiteLinkErrors[];
 }
 
-function WebsiteLinksSection({ value, dispatch }: WebsiteLinksSectionProps) {
+function WebsiteLinksSection({ value, dispatch, errors = [] }: WebsiteLinksSectionProps) {
   const canAdd = value.length < MAX_WEBSITE_LINKS;
 
   return (
@@ -53,65 +48,82 @@ function WebsiteLinksSection({ value, dispatch }: WebsiteLinksSectionProps) {
 
       {value.length > 0 && (
         <div className="space-y-3">
-          {value.map((link, index) => (
-            // Row index is the stable identity here — list is at most 3 entries
-            // and removing a row shifts the tail, so key-by-index matches the
-            // reducer's index-based action payloads.
-            <div
-              // eslint-disable-next-line react/no-array-index-key
-              key={index}
-              className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-start"
-            >
-              <div className="space-y-1">
-                <Label htmlFor={`website-link-url-${index}`} className="sr-only">
-                  URL for link {index + 1}
-                </Label>
-                <Input
-                  id={`website-link-url-${index}`}
-                  type="url"
-                  inputMode="url"
-                  placeholder="https://example.com"
-                  value={link.url}
-                  onChange={(e) =>
-                    dispatch({
-                      type: 'UPDATE_WEBSITE_LINK',
-                      index,
-                      field: 'url',
-                      value: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor={`website-link-title-${index}`} className="sr-only">
-                  Description for link {index + 1}
-                </Label>
-                <Input
-                  id={`website-link-title-${index}`}
-                  placeholder="Link description"
-                  maxLength={MAX_LINK_DESCRIPTION_LENGTH}
-                  value={link.title}
-                  onChange={(e) =>
-                    dispatch({
-                      type: 'UPDATE_WEBSITE_LINK',
-                      index,
-                      field: 'title',
-                      value: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={`Remove link ${index + 1}`}
-                onClick={() => dispatch({ type: 'REMOVE_WEBSITE_LINK', index })}
+          {value.map((link, index) => {
+            const rowErrors = errors[index];
+            return (
+              // Row index is the stable identity here — list is at most 3 entries
+              // and removing a row shifts the tail, so key-by-index matches the
+              // reducer's index-based action payloads.
+              <div
+                // eslint-disable-next-line react/no-array-index-key
+                key={index}
+                className="space-y-1"
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
+                  <div className="space-y-1">
+                    <Label htmlFor={`website-link-url-${index}`} className="sr-only">
+                      URL for link {index + 1}
+                    </Label>
+                    <Input
+                      id={`website-link-url-${index}`}
+                      type="url"
+                      inputMode="url"
+                      placeholder="https://example.com"
+                      aria-invalid={!!rowErrors?.url || undefined}
+                      value={link.url}
+                      onChange={(e) =>
+                        dispatch({
+                          type: 'UPDATE_WEBSITE_LINK',
+                          index,
+                          field: 'url',
+                          value: e.target.value,
+                        })
+                      }
+                    />
+                    {rowErrors?.url && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {rowErrors.url}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`website-link-title-${index}`} className="sr-only">
+                      Description for link {index + 1}
+                    </Label>
+                    <Input
+                      id={`website-link-title-${index}`}
+                      placeholder="Link description"
+                      maxLength={MAX_LINK_DESCRIPTION_LENGTH}
+                      aria-invalid={!!rowErrors?.title || undefined}
+                      value={link.title}
+                      onChange={(e) =>
+                        dispatch({
+                          type: 'UPDATE_WEBSITE_LINK',
+                          index,
+                          field: 'title',
+                          value: e.target.value,
+                        })
+                      }
+                    />
+                    {rowErrors?.title && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {rowErrors.title}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove link ${index + 1}`}
+                    onClick={() => dispatch({ type: 'REMOVE_WEBSITE_LINK', index })}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

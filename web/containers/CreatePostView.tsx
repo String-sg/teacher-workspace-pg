@@ -102,7 +102,11 @@ import {
   type PostFormField,
 } from '~/lib/validation-errors';
 
-import { hasPendingUploads, isCreatePostFormValid } from './createPostValidation';
+import {
+  getWebsiteLinksErrors,
+  hasPendingUploads,
+  isCreatePostFormValid,
+} from './createPostValidation';
 
 // ─── Route loader ───────────────────────────────────────────────────────────
 
@@ -846,6 +850,10 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
   // and these fields will be required by the wire contract; gate in advance so
   // the form-state matches what Phase 2 expects.
   const isFormValid = isCreatePostFormValid(state, selectedType);
+  const websiteLinkErrors = useMemo(
+    () => getWebsiteLinksErrors(state.websiteLinks),
+    [state.websiteLinks],
+  );
   const uploadsPending = hasPendingUploads(state);
   const recipientCount = state.selectedRecipients.reduce((sum, r) => sum + (r.count ?? 1), 0);
   const isEditing = Boolean(editId);
@@ -1336,7 +1344,11 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
                 {/* Website links — available on both kinds. */}
                 <div onFocus={() => setFocusSection('links')}>
-                  <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
+                  <WebsiteLinksSection
+                    value={state.websiteLinks}
+                    dispatch={dispatch}
+                    errors={websiteLinkErrors}
+                  />
                 </div>
 
                 {/* Attachments */}
