@@ -32,11 +32,11 @@ export interface ScheduleWindow {
 // change, not a code change.
 export const DEFAULT_SCHEDULE_WINDOW: ScheduleWindow = { start: '07:00', end: '21:45' };
 
-// pgw accepts a 15-min minimum lead time and a 30-day maximum. Both are
+// pgw accepts a 15-min minimum lead time and a 21-day maximum. Both are
 // PG-team-confirmable — defaulting here to the provisional values called out
 // in the plan; adjust when PG confirms.
 const MIN_LEAD_MS = 15 * 60 * 1000;
-const MAX_LEAD_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_LEAD_MS = 21 * 24 * 60 * 60 * 1000;
 const SLOT_STEP_MIN = 15;
 const DEFAULT_TIME = '09:00';
 
@@ -165,7 +165,7 @@ export function SchedulePickerDialog({
   const maxDate = useMemo(() => {
     const m = new Date();
     m.setHours(23, 59, 59, 999);
-    m.setDate(m.getDate() + 30);
+    m.setDate(m.getDate() + 21);
     return m;
   }, []);
 
