@@ -430,48 +430,10 @@ const PostPreview = React.memo(function PostPreview({
                   </>
                 )}
 
-                {questions.length > 0 && (
-                  <div data-section="questions" className="mt-5 space-y-4 border-t pt-4">
-                    {questions.map((q, i) => (
-                      <div key={q.id} className="space-y-2">
-                        {/* Question label */}
-                        <div>
-                          <p className="text-sm font-semibold">
-                            <span className="text-destructive">* </span>
-                            {i + 1}. {q.text || 'Untitled question'}
-                          </p>
-                          {q.description && (
-                            <p className="mt-0.5 text-xs text-muted-foreground">{q.description}</p>
-                          )}
-                        </div>
-                        {/* MCQ options */}
-                        {q.type === 'mcq' && q.options.length > 0 && (
-                          <ul className="space-y-1.5">
-                            {q.options.map((opt, oi) => (
-                              <li
-                                key={oi}
-                                className="flex items-center gap-2.5 rounded-lg border bg-background px-3 py-2 text-xs"
-                              >
-                                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-muted-foreground/40" />
-                                <span
-                                  className={opt ? 'text-foreground' : 'text-muted-foreground/50'}
-                                >
-                                  {opt || `Option ${oi + 1}`}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {/* Free-text answer area */}
-                        {q.type === 'free-text' && (
-                          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground/60">
-                            Your answer here…
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Questions are NOT shown inline — they appear after the parent taps Yes.
+                    The QuestionScreen overlay handles the preview when focusSection='questions'. */}
+                {/* Anchor so the scroll-to logic can still jump here */}
+                {questions.length > 0 && <div data-section="questions" />}
 
                 {/* Enquiry contact */}
                 <div className="mt-auto pt-6 text-center">
