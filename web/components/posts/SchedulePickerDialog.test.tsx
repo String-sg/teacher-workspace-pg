@@ -5,6 +5,7 @@ import {
   DEFAULT_SCHEDULE_WINDOW,
   SchedulePickerDialog,
   buildTimeSlots,
+  filterPastSlots,
 } from './SchedulePickerDialog';
 
 describe('buildTimeSlots', () => {
@@ -44,6 +45,33 @@ describe('buildTimeSlots', () => {
     const slots = buildTimeSlots({ start: '12:00', end: '13:00' });
     expect(slots[0]).toEqual({ value: '12:00', label: '12:00 PM' });
     expect(slots[slots.length - 1]).toEqual({ value: '13:00', label: '1:00 PM' });
+  });
+});
+
+describe('filterPastSlots', () => {
+  const allSlots = buildTimeSlots(DEFAULT_SCHEDULE_WINDOW);
+
+  it('removes slots within 15-min lead of current time', () => {
+    // 16:16 + 15 = 16:31 → ceil(991/15)*15 = 67*15 = 1005 min = 16:45
+    const filtered = filterPastSlots(allSlots, '16:16');
+    expect(filtered[0].value).toBe('16:45');
+    expect(filtered.every((s) => s.value >= '16:45')).toBe(true);
+  });
+
+  it('rounds cutoff up to the next 15-min slot boundary', () => {
+    // 16:28 + 15 = 16:43 → ceil(1003/15)*15 = 67*15 = 1005 min = 16:45
+    const filtered = filterPastSlots(allSlots, '16:28');
+    expect(filtered[0].value).toBe('16:45');
+  });
+
+  it('returns all slots when current time is before the window start minus lead', () => {
+    const filtered = filterPastSlots(allSlots, '06:00');
+    expect(filtered).toEqual(allSlots);
+  });
+
+  it('returns empty when current time is past the window end', () => {
+    const filtered = filterPastSlots(allSlots, '21:45');
+    expect(filtered).toEqual([]);
   });
 });
 

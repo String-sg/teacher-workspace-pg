@@ -1,5 +1,5 @@
 import { CalendarClock } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   Button,
@@ -48,6 +48,16 @@ function toMinuteOfDay(hhmm: string): number {
 function isTimeInWindow(time: string, window: ScheduleWindow): boolean {
   const t = toMinuteOfDay(time);
   return t >= toMinuteOfDay(window.start) && t <= toMinuteOfDay(window.end);
+}
+
+export function filterPastSlots(
+  slots: { value: string; label: string }[],
+  currentTime: string,
+): { value: string; label: string }[] {
+  const nowMin = toMinuteOfDay(currentTime);
+  const leadMin = MIN_LEAD_MS / 60_000;
+  const cutoffSlot = Math.ceil((nowMin + leadMin) / SLOT_STEP_MIN) * SLOT_STEP_MIN;
+  return slots.filter((slot) => toMinuteOfDay(slot.value) >= cutoffSlot);
 }
 
 export function buildTimeSlots(window: ScheduleWindow): { value: string; label: string }[] {
@@ -133,6 +143,41 @@ export function SchedulePickerDialog({
 
   const slots = useMemo(() => buildTimeSlots(scheduleWindow), [scheduleWindow]);
 
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
+
+  const maxDate = useMemo(() => {
+    const m = new Date();
+    m.setHours(23, 59, 59, 999);
+    m.setDate(m.getDate() + 21);
+    return m;
+  }, []);
+
+  const filteredSlots = useMemo(() => {
+    if (!date) return slots;
+    const isToday =
+      date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate();
+    if (!isToday) return slots;
+    const sgtNow = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Singapore',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date());
+    return filterPastSlots(slots, sgtNow);
+  }, [date, today, slots]);
+
+  useEffect(() => {
+    if (date && filteredSlots.length > 0 && !filteredSlots.some((s) => s.value === time)) {
+      setTime(filteredSlots[0].value);
+    }
+  }, [date, filteredSlots, time]);
+
   const scheduledSendAt = useMemo(() => {
     if (!date) return null;
     return toSgtIso(date, time);
@@ -155,19 +200,6 @@ export function SchedulePickerDialog({
     }
     return { ok: true as const };
   }, [scheduledSendAt, time, scheduleWindow]);
-
-  const today = useMemo(() => {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    return t;
-  }, []);
-
-  const maxDate = useMemo(() => {
-    const m = new Date();
-    m.setHours(23, 59, 59, 999);
-    m.setDate(m.getDate() + 21);
-    return m;
-  }, []);
 
   function handleConfirm() {
     if (!scheduledSendAt || !validation.ok) return;
@@ -215,7 +247,7 @@ export function SchedulePickerDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {slots.map((slot) => (
+                  {filteredSlots.map((slot) => (
                     <SelectItem key={slot.value} value={slot.value}>
                       {slot.label}
                     </SelectItem>
