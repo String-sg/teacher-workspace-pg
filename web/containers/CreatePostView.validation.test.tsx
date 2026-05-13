@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SelectedEntity } from '~/components/comms/entity-selector';
-import type { ReminderConfig } from '~/data/mock-pg-announcements';
+import type { FormQuestion, ReminderConfig } from '~/data/mock-pg-announcements';
 
 import { isCreatePostFormValid } from './createPostValidation';
 import type { PostFormState } from './CreatePostView';
@@ -87,5 +87,41 @@ describe('isCreatePostFormValid — post-with-response (form)', () => {
     // PGW allows NONE as a valid reminder choice.
     const reminder: ReminderConfig = { type: 'NONE' };
     expect(isCreatePostFormValid({ ...formBase, reminder }, 'post-with-response')).toBe(true);
+  });
+
+  const question: FormQuestion = { id: '1', text: 'Favourite colour?', type: 'free-text' };
+
+  it('passes with valid custom questions', () => {
+    expect(
+      isCreatePostFormValid({ ...formBase, questions: [question] }, 'post-with-response'),
+    ).toBe(true);
+  });
+
+  it('fails when question text exceeds 120 characters', () => {
+    const long: FormQuestion = { ...question, text: 'a'.repeat(121) };
+    expect(isCreatePostFormValid({ ...formBase, questions: [long] }, 'post-with-response')).toBe(
+      false,
+    );
+  });
+
+  it('passes when question text is exactly 120 characters', () => {
+    const atLimit: FormQuestion = { ...question, text: 'a'.repeat(120) };
+    expect(isCreatePostFormValid({ ...formBase, questions: [atLimit] }, 'post-with-response')).toBe(
+      true,
+    );
+  });
+
+  it('fails when question description exceeds 250 characters', () => {
+    const long: FormQuestion = { ...question, description: 'a'.repeat(251) };
+    expect(isCreatePostFormValid({ ...formBase, questions: [long] }, 'post-with-response')).toBe(
+      false,
+    );
+  });
+
+  it('passes when question description is exactly 250 characters', () => {
+    const atLimit: FormQuestion = { ...question, description: 'a'.repeat(250) };
+    expect(isCreatePostFormValid({ ...formBase, questions: [atLimit] }, 'post-with-response')).toBe(
+      true,
+    );
   });
 });

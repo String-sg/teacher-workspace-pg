@@ -6,6 +6,8 @@ import type { FormQuestion } from '~/data/mock-pg-announcements';
 import { cn } from '~/lib/utils';
 
 export const MAX_QUESTIONS = 5;
+export const MAX_QUESTION_TEXT_LENGTH = 120;
+export const MAX_QUESTION_DESCRIPTION_LENGTH = 250;
 const MIN_MCQ_OPTIONS = 2;
 const MAX_MCQ_OPTIONS = 6;
 
@@ -40,31 +42,43 @@ function QuestionBuilder({ questions, dispatch }: QuestionBuilderProps) {
         <div key={question.id} className="space-y-3 rounded-xl border p-4">
           <div className="flex items-start gap-2">
             <div className="flex-1 space-y-2">
-              <Input
-                placeholder={`Question ${index + 1}`}
-                value={question.text}
-                onChange={(e) =>
-                  dispatch({
-                    type: 'UPDATE_QUESTION',
-                    id: question.id,
-                    payload: { text: e.target.value },
-                  })
-                }
-              />
+              <div className="space-y-1">
+                <Input
+                  placeholder={`Question ${index + 1}`}
+                  value={question.text}
+                  maxLength={MAX_QUESTION_TEXT_LENGTH}
+                  onChange={(e) =>
+                    dispatch({
+                      type: 'UPDATE_QUESTION',
+                      id: question.id,
+                      payload: { text: e.target.value },
+                    })
+                  }
+                />
+                <span className="block text-right text-xs text-muted-foreground tabular-nums">
+                  {question.text.length}/{MAX_QUESTION_TEXT_LENGTH}
+                </span>
+              </div>
 
-              <Textarea
-                placeholder="Helper text (optional)"
-                value={question.description ?? ''}
-                rows={2}
-                className="resize-none text-sm"
-                onChange={(e) =>
-                  dispatch({
-                    type: 'UPDATE_QUESTION',
-                    id: question.id,
-                    payload: { description: e.target.value || undefined },
-                  })
-                }
-              />
+              <div className="space-y-1">
+                <Textarea
+                  placeholder="Helper text (optional)"
+                  value={question.description ?? ''}
+                  rows={2}
+                  maxLength={MAX_QUESTION_DESCRIPTION_LENGTH}
+                  className="resize-none text-sm"
+                  onChange={(e) =>
+                    dispatch({
+                      type: 'UPDATE_QUESTION',
+                      id: question.id,
+                      payload: { description: e.target.value || undefined },
+                    })
+                  }
+                />
+                <span className="block text-right text-xs text-muted-foreground tabular-nums">
+                  {(question.description ?? '').length}/{MAX_QUESTION_DESCRIPTION_LENGTH}
+                </span>
+              </div>
 
               <div className="flex items-center gap-2">
                 <Button
