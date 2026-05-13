@@ -1,4 +1,5 @@
 import type { PostKind } from '~/components/posts/PostTypePicker';
+import type { WebsiteLink } from '~/components/posts/WebsiteLinksSection';
 
 import type { PostFormState } from './CreatePostView';
 
@@ -39,6 +40,10 @@ export function isCreatePostFormValid(
   );
   if (!allUploadsResolved) return false;
 
+  // Gate 4: website links — if either field in a row is filled, both are
+  // required, and the URL must look like a valid URL. Applies to all post types.
+  if (!areWebsiteLinksValid(state.websiteLinks)) return false;
+
   if (selectedType !== 'post-with-response') return true;
 
   // Due date must be today or later. Past dates make the reminder window empty
@@ -58,6 +63,49 @@ export function isCreatePostFormValid(
   }
 
   return true;
+}
+
+export interface WebsiteLinkErrors {
+  url?: string;
+  title?: string;
+}
+
+export function getWebsiteLinkErrors(link: WebsiteLink): WebsiteLinkErrors {
+  const hasUrl = link.url.trim().length > 0;
+  const hasTitle = link.title.trim().length > 0;
+
+  if (!hasUrl && !hasTitle) return {};
+
+  const errors: WebsiteLinkErrors = {};
+
+  if (!hasUrl) {
+    errors.url = 'URL is required.';
+  } else if (!isValidUrl(link.url.trim())) {
+    errors.url = 'Please enter a valid URL.';
+  }
+
+  if (!hasTitle) {
+    errors.title = 'Description is required.';
+  }
+
+  return errors;
+}
+
+export function getWebsiteLinksErrors(links: WebsiteLink[]): WebsiteLinkErrors[] {
+  return links.map(getWebsiteLinkErrors);
+}
+
+function areWebsiteLinksValid(links: WebsiteLink[]): boolean {
+  return links.every((l) => Object.keys(getWebsiteLinkErrors(l)).length === 0);
+}
+
+function isValidUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 export function hasPendingUploads(state: PostFormState): boolean {
