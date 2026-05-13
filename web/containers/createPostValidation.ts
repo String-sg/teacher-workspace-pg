@@ -1,4 +1,8 @@
 import type { PostKind } from '~/components/posts/PostTypePicker';
+import {
+  MAX_QUESTION_DESCRIPTION_LENGTH,
+  MAX_QUESTION_TEXT_LENGTH,
+} from '~/components/posts/QuestionBuilder';
 
 import type { PostFormState } from './CreatePostView';
 
@@ -55,6 +59,12 @@ export function isCreatePostFormValid(
     const min = addDaysIso(today, 1);
     const max = addDaysIso(state.dueDate, -1);
     if (r < min || r > max) return false;
+  }
+
+  // Gate 4: custom-question character limits (PG enforces 120 / 250).
+  for (const q of state.questions) {
+    if (q.text.length > MAX_QUESTION_TEXT_LENGTH) return false;
+    if ((q.description ?? '').length > MAX_QUESTION_DESCRIPTION_LENGTH) return false;
   }
 
   return true;
