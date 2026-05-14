@@ -50,6 +50,13 @@ interface PostPreviewProps {
   focusSection?: PreviewFocusSection;
   /** 0-based index of the question card currently being edited. */
   focusQuestionIndex?: number;
+  /**
+   * Called when the teacher taps the back chevron (or navigates before Q1)
+   * inside the question-answer preview. The parent should set `focusSection`
+   * to something other than `'questions'` so re-entering the questions builder
+   * correctly re-triggers the question view.
+   */
+  onDismissQuestions?: () => void;
 }
 
 /**
@@ -138,6 +145,7 @@ const PostPreview = React.memo(function PostPreview({
   defaultEnquiryEmail = 'enquiry@school.edu.sg',
   focusSection,
   focusQuestionIndex = 0,
+  onDismissQuestions,
 }: PostPreviewProps) {
   const {
     kind,
@@ -212,41 +220,29 @@ const PostPreview = React.memo(function PostPreview({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Tracks whether the teacher dismissed the question view by tapping the back
-  // chevron. Reset to false whenever focusSection transitions *into* 'questions'
-  // from a different section so re-focusing the builder brings the view back.
-  const [questionViewDismissed, setQuestionViewDismissed] = useState(false);
   // True when the parent-side "Yes" button was tapped in the preview — triggers
   // the question flow independently of the teacher's current focus section.
   const [yesClicked, setYesClicked] = useState(false);
   // Which question the preview is currently showing (can diverge from
   // focusQuestionIndex when the teacher navigates with the chrome arrows).
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(focusQuestionIndex);
-  const prevFocusRef = useRef(focusSection);
-  useEffect(() => {
-    if (prevFocusRef.current !== 'questions' && focusSection === 'questions') {
-      setQuestionViewDismissed(false);
-    }
-    prevFocusRef.current = focusSection;
-  }, [focusSection]);
   // Sync preview to whichever question card the teacher just focused.
   useEffect(() => {
     setActiveQuestionIndex(focusQuestionIndex);
   }, [focusQuestionIndex]);
 
-  // Shared dismiss helper — clears both dismiss paths.
+  // Dismiss: tell the parent to move focusSection away from 'questions' so that
+  // the next time the teacher interacts with the builder it triggers a real prop
+  // change and the question view correctly re-appears.
   const dismissQuestionView = () => {
-    setQuestionViewDismissed(true);
+    onDismissQuestions?.();
     setYesClicked(false);
   };
 
-  // True when: (a) teacher is focused on the questions builder and hasn't
-  // dismissed, OR (b) the preview "Yes" button was tapped. Both paths require
-  // at least one question to exist.
+  // True when: (a) teacher is focused on the questions builder, OR (b) the
+  // preview "Yes" button was tapped. Both paths require at least one question.
   const showQuestionView =
-    isForm &&
-    questions.length > 0 &&
-    ((focusSection === 'questions' && !questionViewDismissed) || yesClicked);
+    isForm && questions.length > 0 && (focusSection === 'questions' || yesClicked);
 
   // Scroll the preview pane to the relevant section whenever the teacher's
   // focus moves to a different part of the form.

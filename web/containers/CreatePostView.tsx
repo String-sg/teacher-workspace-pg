@@ -1410,19 +1410,23 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                             variant="secondary"
                             size="sm"
                             disabled={state.questions.length >= MAX_QUESTIONS}
-                            onClick={() => dispatch({ type: 'ADD_QUESTION' })}
+                            onClick={() => {
+                              dispatch({ type: 'ADD_QUESTION' });
+                              setFocusSection('questions');
+                            }}
                           >
                             <Plus className="h-4 w-4" />
                             Add a Question
                           </Button>
                         </div>
-                        <div onFocus={() => setFocusSection('questions')}>
-                          <QuestionBuilder
-                            questions={state.questions}
-                            dispatch={dispatch}
-                            onQuestionFocus={setFocusedQuestionIndex}
-                          />
-                        </div>
+                        <QuestionBuilder
+                          questions={state.questions}
+                          dispatch={dispatch}
+                          onQuestionFocus={(index) => {
+                            setFocusedQuestionIndex(index);
+                            setFocusSection('questions');
+                          }}
+                        />
                       </div>
                     </>
                   )}
@@ -1477,6 +1481,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
                   focusSection={focusSection}
                   focusQuestionIndex={focusedQuestionIndex}
+                  onDismissQuestions={() => setFocusSection('response')}
                 />
               </CardContent>
             </Card>
