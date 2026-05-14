@@ -216,6 +216,9 @@ const PostPreview = React.memo(function PostPreview({
   // chevron. Reset to false whenever focusSection transitions *into* 'questions'
   // from a different section so re-focusing the builder brings the view back.
   const [questionViewDismissed, setQuestionViewDismissed] = useState(false);
+  // True when the parent-side "Yes" button was tapped in the preview — triggers
+  // the question flow independently of the teacher's current focus section.
+  const [yesClicked, setYesClicked] = useState(false);
   // Which question the preview is currently showing (can diverge from
   // focusQuestionIndex when the teacher navigates with the chrome arrows).
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(focusQuestionIndex);
@@ -231,10 +234,19 @@ const PostPreview = React.memo(function PostPreview({
     setActiveQuestionIndex(focusQuestionIndex);
   }, [focusQuestionIndex]);
 
-  // True when the teacher is focused on the custom-questions builder, at least
-  // one question exists, and they haven't tapped the back chevron to dismiss.
+  // Shared dismiss helper — clears both dismiss paths.
+  const dismissQuestionView = () => {
+    setQuestionViewDismissed(true);
+    setYesClicked(false);
+  };
+
+  // True when: (a) teacher is focused on the questions builder and hasn't
+  // dismissed, OR (b) the preview "Yes" button was tapped. Both paths require
+  // at least one question to exist.
   const showQuestionView =
-    isForm && focusSection === 'questions' && questions.length > 0 && !questionViewDismissed;
+    isForm &&
+    questions.length > 0 &&
+    ((focusSection === 'questions' && !questionViewDismissed) || yesClicked);
 
   // Scroll the preview pane to the relevant section whenever the teacher's
   // focus moves to a different part of the form.
@@ -257,7 +269,7 @@ const PostPreview = React.memo(function PostPreview({
               type="button"
               aria-label="Back to post"
               className="flex items-center justify-center"
-              onClick={() => setQuestionViewDismissed(true)}
+              onClick={dismissQuestionView}
             >
               <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
             </button>
@@ -278,7 +290,7 @@ const PostPreview = React.memo(function PostPreview({
                     if (activeQuestionIndex > 0) {
                       setActiveQuestionIndex((i) => i - 1);
                     } else {
-                      setQuestionViewDismissed(true);
+                      dismissQuestionView();
                     }
                   }}
                 >
@@ -521,8 +533,18 @@ const PostPreview = React.memo(function PostPreview({
                 {responseType === 'yes-no' && (
                   <div className="flex shrink-0 gap-1.5">
                     <button
-                      disabled
-                      className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground"
+                      type="button"
+                      className={cn(
+                        'rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium text-foreground',
+                        questions.length > 0 ? 'cursor-pointer' : 'cursor-default',
+                      )}
+                      onClick={() => {
+                        if (questions.length > 0) {
+                          setYesClicked(true);
+                          setQuestionViewDismissed(false);
+                          setActiveQuestionIndex(0);
+                        }
+                      }}
                     >
                       Yes
                     </button>
