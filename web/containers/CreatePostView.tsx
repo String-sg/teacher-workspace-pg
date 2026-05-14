@@ -785,6 +785,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
   const [focusSection, setFocusSection] = useState<
     'header' | 'content' | 'attachments' | 'links' | 'questions' | 'response'
   >('header');
+  // 0-based index of the question card the teacher is currently editing.
+  const [focusedQuestionIndex, setFocusedQuestionIndex] = useState(0);
   // `submitted` lives until the browser unmounts us on navigate — that's what
   // debounces a rapid double-tap on the Post button without a setTimeout race.
   const [saveState, setSaveState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
@@ -1396,7 +1398,11 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                         </Button>
                       </div>
                       <div onFocus={() => setFocusSection('questions')}>
-                        <QuestionBuilder questions={state.questions} dispatch={dispatch} />
+                        <QuestionBuilder
+                          questions={state.questions}
+                          dispatch={dispatch}
+                          onQuestionFocus={setFocusedQuestionIndex}
+                        />
                       </div>
                     </div>
                   )}
@@ -1446,6 +1452,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   currentUserName={session.staffName ?? 'Daniel Tan'}
                   defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
                   focusSection={focusSection}
+                  focusQuestionIndex={focusedQuestionIndex}
                 />
               </CardContent>
             </Card>
