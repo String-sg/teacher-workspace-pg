@@ -74,7 +74,7 @@ import { VenueSection } from '~/components/posts/VenueSection';
 import { MAX_WEBSITE_LINKS, WebsiteLinksSection } from '~/components/posts/WebsiteLinksSection';
 import type { WebsiteLink } from '~/components/posts/WebsiteLinksSection';
 import { useSidebarContext } from '~/components/Sidebar/context';
-import { Button, Card, CardContent, Input, Label } from '~/components/ui';
+import { Button, Card, CardContent, Input, Label, Separator } from '~/components/ui';
 import {
   describeScheduledSendFailure,
   isAnnouncementDraftId,
@@ -1204,6 +1204,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 </div>
               </div>
 
+              <Separator />
+
               {/* Staff in charge */}
               <div className="space-y-1.5">
                 <Label>
@@ -1218,6 +1220,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 />
                 <p className="text-sm text-muted-foreground">{staffHelperText(state.kind)}</p>
               </div>
+
+              <Separator />
 
               {/* Enquiry email */}
               <div className="space-y-1.5">
@@ -1282,6 +1286,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   )}
                 </div>
 
+                <Separator />
+
                 {/* Description with counter and toolbar */}
                 <div className="space-y-1.5" onFocus={() => setFocusSection('content')}>
                   <div className="flex items-center justify-between">
@@ -1314,18 +1320,23 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
                 {/* Event schedule and venue — right after description, consent-form only. */}
                 {selectedType === 'post-with-response' && (
-                  <div className="space-y-5" onFocus={() => setFocusSection('header')}>
-                    <EventScheduleSection
-                      value={state.event}
-                      onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
-                    />
+                  <>
+                    <Separator />
+                    <div className="space-y-5" onFocus={() => setFocusSection('header')}>
+                      <EventScheduleSection
+                        value={state.event}
+                        onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
+                      />
 
-                    <VenueSection
-                      value={state.venue}
-                      onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
-                    />
-                  </div>
+                      <VenueSection
+                        value={state.venue}
+                        onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
+                      />
+                    </div>
+                  </>
                 )}
+
+                <Separator />
 
                 {/* Shortcuts — per-key flag-gated. Renders null when both
                   shortcuts are gated off, so there's no empty subsection. */}
@@ -1336,10 +1347,14 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   editContactEnabled={editContactEnabled}
                 />
 
+                <Separator />
+
                 {/* Website links — available on both kinds. */}
                 <div onFocus={() => setFocusSection('links')}>
                   <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
                 </div>
+
+                <Separator />
 
                 {/* Attachments */}
                 <div onFocus={() => setFocusSection('attachments')}>
@@ -1366,6 +1381,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                     </p>
                   </div>
 
+                  <Separator />
+
                   <div onFocus={() => setFocusSection('response')}>
                     <ResponseTypeSelector
                       value={state.responseType}
@@ -1376,35 +1393,38 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
                   {/* Questions — Yes/No only */}
                   {state.responseType === 'yes-no' && (
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                            Questions
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Custom questions (optional). You may add up to {MAX_QUESTIONS}{' '}
-                            questions.
-                          </p>
+                    <>
+                      <Separator />
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                              Questions
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Custom questions (optional). You may add up to {MAX_QUESTIONS}{' '}
+                              questions.
+                            </p>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={state.questions.length >= MAX_QUESTIONS}
+                            onClick={() => dispatch({ type: 'ADD_QUESTION' })}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add a Question
+                          </Button>
                         </div>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={state.questions.length >= MAX_QUESTIONS}
-                          onClick={() => dispatch({ type: 'ADD_QUESTION' })}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add a Question
-                        </Button>
+                        <div onFocus={() => setFocusSection('questions')}>
+                          <QuestionBuilder
+                            questions={state.questions}
+                            dispatch={dispatch}
+                            onQuestionFocus={setFocusedQuestionIndex}
+                          />
+                        </div>
                       </div>
-                      <div onFocus={() => setFocusSection('questions')}>
-                        <QuestionBuilder
-                          questions={state.questions}
-                          dispatch={dispatch}
-                          onQuestionFocus={setFocusedQuestionIndex}
-                        />
-                      </div>
-                    </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -1421,6 +1441,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                     Due Date &amp; Reminder
                   </p>
 
+                  <Separator />
+
                   <div onFocus={() => setFocusSection('response')}>
                     <DueDateSection
                       value={state.dueDate}
@@ -1428,6 +1450,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                       required
                     />
                   </div>
+
+                  <Separator />
 
                   <ReminderSection
                     value={state.reminder}
