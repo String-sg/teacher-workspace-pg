@@ -537,7 +537,6 @@ const PostPreview = React.memo(function PostPreview({
                       onClick={() => {
                         if (questions.length > 0) {
                           setYesClicked(true);
-                          setQuestionViewDismissed(false);
                           setActiveQuestionIndex(0);
                         }
                       }}
