@@ -1,4 +1,5 @@
 import type { PostKind } from '~/components/posts/PostTypePicker';
+import type { PostFormField } from '~/lib/validation-errors';
 
 import type { PostFormState } from './CreatePostView';
 
@@ -58,6 +59,27 @@ export function isCreatePostFormValid(
   }
 
   return true;
+}
+
+/**
+ * Returns field-level error messages for every required field that is
+ * currently empty. Used to stamp errors on the form when Post/Schedule
+ * is clicked while the form is invalid.
+ */
+export function computeInlineErrors(
+  state: PostFormState,
+  selectedType: PostKind | null,
+): Partial<Record<PostFormField, string>> {
+  const errors: Partial<Record<PostFormField, string>> = {};
+  if (!state.title.trim()) errors.title = 'Please enter a title.';
+  if (!state.description.trim() || state.description.length > 2000)
+    errors.description = 'Please write the post details.';
+  if (!state.enquiryEmail.trim()) errors.enquiryEmail = 'Please select an enquiry email.';
+  if (state.selectedRecipients.length === 0)
+    errors.recipients = 'Please select at least one recipient.';
+  if (selectedType === 'post-with-response' && !state.dueDate.trim())
+    errors.dueDate = 'Please set a due date for responses.';
+  return errors;
 }
 
 export function hasPendingUploads(state: PostFormState): boolean {

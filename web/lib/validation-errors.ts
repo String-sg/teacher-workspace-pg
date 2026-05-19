@@ -1,7 +1,7 @@
 import { PGValidationError } from '~/api/errors';
 
 /** Logical form field identifiers the container stamps inline validation errors against. */
-export type PostFormField = 'title' | 'description' | 'enquiryEmail';
+export type PostFormField = 'title' | 'description' | 'enquiryEmail' | 'recipients' | 'dueDate';
 
 /**
  * Map PGW validation error codes to a user-facing message. Falls back to the
