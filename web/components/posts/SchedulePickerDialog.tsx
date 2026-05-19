@@ -129,6 +129,11 @@ export interface SchedulePickerDialogProps {
    * `configs.configs.schedule_window` once PG ships the real flag.
    */
   scheduleWindow?: ScheduleWindow;
+  /**
+   * YYYY-MM-DD string in SGT. When set, the scheduled send must be at least
+   * 1 day before this date (i.e. before midnight SGT on the due date).
+   */
+  dueDate?: string;
 }
 
 export function SchedulePickerDialog({
@@ -137,6 +142,7 @@ export function SchedulePickerDialog({
   onConfirm,
   busy,
   scheduleWindow = DEFAULT_SCHEDULE_WINDOW,
+  dueDate,
 }: SchedulePickerDialogProps) {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<string>(DEFAULT_TIME);
@@ -198,8 +204,23 @@ export function SchedulePickerDialog({
     if (diff > MAX_LEAD_MS) {
       return { ok: false as const, reason: 'Scheduled time cannot be more than 30 days away.' };
     }
+    if (dueDate) {
+      // Require at least 1 full day gap: scheduledSendAt must be before midnight SGT on the due date.
+      const dueMidnightSgt = new Date(`${dueDate}T00:00:00+08:00`);
+      if (new Date(scheduledSendAt) >= dueMidnightSgt) {
+        const formatted = new Date(`${dueDate}T12:00:00+08:00`).toLocaleDateString('en-SG', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
+        return {
+          ok: false as const,
+          reason: `Scheduled send must be at least 1 day before the due date (${formatted}).`,
+        };
+      }
+    }
     return { ok: true as const };
-  }, [scheduledSendAt, time, scheduleWindow]);
+  }, [scheduledSendAt, time, scheduleWindow, dueDate]);
 
   function handleConfirm() {
     if (!scheduledSendAt || !validation.ok) return;

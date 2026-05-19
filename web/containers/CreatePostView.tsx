@@ -74,7 +74,17 @@ import { VenueSection } from '~/components/posts/VenueSection';
 import { MAX_WEBSITE_LINKS, WebsiteLinksSection } from '~/components/posts/WebsiteLinksSection';
 import type { WebsiteLink } from '~/components/posts/WebsiteLinksSection';
 import { useSidebarContext } from '~/components/Sidebar/context';
-import { Button, Card, CardContent, Input, Label } from '~/components/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
+} from '~/components/ui';
 import {
   describeScheduledSendFailure,
   isAnnouncementDraftId,
@@ -102,7 +112,11 @@ import {
   type PostFormField,
 } from '~/lib/validation-errors';
 
-import { hasPendingUploads, isCreatePostFormValid } from './createPostValidation';
+import {
+  computeInlineErrors,
+  hasPendingUploads,
+  isCreatePostFormValid,
+} from './createPostValidation';
 
 // ─── Route loader ───────────────────────────────────────────────────────────
 
@@ -785,6 +799,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
   const [focusSection, setFocusSection] = useState<
     'header' | 'content' | 'attachments' | 'links' | 'questions' | 'response'
   >('header');
+  // 0-based index of the question card the teacher is currently editing.
+  const [focusedQuestionIndex, setFocusedQuestionIndex] = useState(0);
   // `submitted` lives until the browser unmounts us on navigate — that's what
   // debounces a rapid double-tap on the Post button without a setTimeout race.
   const [saveState, setSaveState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
@@ -847,6 +863,19 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
   // the form-state matches what Phase 2 expects.
   const isFormValid = isCreatePostFormValid(state, selectedType);
   const uploadsPending = hasPendingUploads(state);
+
+  const [showValidationPopover, setShowValidationPopover] = useState(false);
+  const FIELD_LABELS: Record<PostFormField, string> = {
+    title: 'Add a title',
+    description: 'Write the post details',
+    enquiryEmail: 'Select an enquiry email',
+    recipients: 'Select at least one recipient',
+    dueDate: 'Set a due date for responses',
+  };
+  const missingFieldLabels = (Object.keys(fieldErrors) as PostFormField[]).map(
+    (k) => FIELD_LABELS[k],
+  );
+
   const recipientCount = state.selectedRecipients.reduce((sum, r) => sum + (r.count ?? 1), 0);
   const isEditing = Boolean(editId);
   // True when editing a post that has already been sent — only staff in charge
@@ -900,6 +929,24 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
   if (editId && !editData) {
     return <Navigate to="/posts" replace />;
+  }
+
+  function handlePostClick() {
+    if (!isFormValid) {
+      setFieldErrors(computeInlineErrors(state, selectedType));
+      setShowValidationPopover(true);
+      return;
+    }
+    setShowSendDialog(true);
+  }
+
+  function handleScheduleClick() {
+    if (!isFormValid) {
+      setFieldErrors(computeInlineErrors(state, selectedType));
+      setShowValidationPopover(true);
+      return;
+    }
+    setShowScheduleDialog(true);
   }
 
   function handleTypeSelect(type: PostKind) {
@@ -1112,22 +1159,46 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={!isFormValid || isSaving}
-                    onClick={() => setShowScheduleDialog(true)}
+                    disabled={isSaving}
+                    onClick={handleScheduleClick}
+                    className={cn(
+                      !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
+                    )}
                   >
                     <CalendarClock className="mr-1.5 h-4 w-4" />
                     Schedule
                   </Button>
                 )}
-                <Button
-                  variant="default"
-                  size="sm"
-                  disabled={!isFormValid || isSaving}
-                  onClick={() => setShowSendDialog(true)}
-                >
-                  <Send className="mr-1.5 h-4 w-4" />
-                  Post
-                </Button>
+                <Popover open={showValidationPopover} onOpenChange={setShowValidationPopover}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={isSaving}
+                      onClick={handlePostClick}
+                      className={cn(
+                        !isFormValid && '!bg-muted !text-muted-foreground/40 hover:!bg-muted',
+                      )}
+                    >
+                      <Send className="mr-1.5 h-4 w-4" />
+                      Post
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="end" className="w-64 space-y-2 p-4">
+                    <p className="text-sm font-semibold">Complete these fields before posting</p>
+                    <ul className="space-y-1">
+                      {missingFieldLabels.map((label) => (
+                        <li
+                          key={label}
+                          className="flex items-center gap-2 text-sm text-destructive"
+                        >
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
+                  </PopoverContent>
+                </Popover>
                 {uploadsPending && (
                   <span className="text-xs text-muted-foreground">Attachments uploading…</span>
                 )}
@@ -1172,7 +1243,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
       {/* Body */}
       <div className="flex justify-center gap-8 px-6 py-6">
         {/* Form column */}
-        <div className="w-full max-w-2xl flex-1 space-y-6">
+        <div className="flex w-full max-w-2xl flex-1 flex-col gap-6">
           {/* RECIPIENTS Card */}
           <Card>
             <CardContent className="space-y-5 p-6">
@@ -1191,16 +1262,24 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   </p>
                   <StudentRecipientSelector
                     value={state.selectedRecipients}
-                    onChange={(recipients) =>
-                      dispatch({ type: 'SET_RECIPIENTS', payload: recipients })
-                    }
+                    onChange={(recipients) => {
+                      clearFieldError('recipients');
+                      dispatch({ type: 'SET_RECIPIENTS', payload: recipients });
+                    }}
                     classes={classes}
                     students={students}
                     groupsAssigned={groupsAssigned}
                     customGroups={customGroups}
                   />
+                  {fieldErrors.recipients && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {fieldErrors.recipients}
+                    </p>
+                  )}
                 </div>
               </div>
+
+              <Separator />
 
               {/* Staff in charge */}
               <div className="space-y-1.5">
@@ -1216,6 +1295,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                 />
                 <p className="text-sm text-muted-foreground">{staffHelperText(state.kind)}</p>
               </div>
+
+              <Separator />
 
               {/* Enquiry email */}
               <div className="space-y-1.5">
@@ -1280,6 +1361,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   )}
                 </div>
 
+                <Separator />
+
                 {/* Description with counter and toolbar */}
                 <div className="space-y-1.5" onFocus={() => setFocusSection('content')}>
                   <div className="flex items-center justify-between">
@@ -1312,18 +1395,23 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
                 {/* Event schedule and venue — right after description, consent-form only. */}
                 {selectedType === 'post-with-response' && (
-                  <div className="space-y-5" onFocus={() => setFocusSection('header')}>
-                    <EventScheduleSection
-                      value={state.event}
-                      onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
-                    />
+                  <>
+                    <Separator />
+                    <div className="space-y-5" onFocus={() => setFocusSection('header')}>
+                      <EventScheduleSection
+                        value={state.event}
+                        onChange={(value) => dispatch({ type: 'SET_EVENT', payload: value })}
+                      />
 
-                    <VenueSection
-                      value={state.venue}
-                      onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
-                    />
-                  </div>
+                      <VenueSection
+                        value={state.venue}
+                        onChange={(value) => dispatch({ type: 'SET_VENUE', payload: value })}
+                      />
+                    </div>
+                  </>
                 )}
+
+                <Separator />
 
                 {/* Shortcuts — per-key flag-gated. Renders null when both
                   shortcuts are gated off, so there's no empty subsection. */}
@@ -1334,10 +1422,14 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   editContactEnabled={editContactEnabled}
                 />
 
+                <Separator />
+
                 {/* Website links — available on both kinds. */}
                 <div onFocus={() => setFocusSection('links')}>
                   <WebsiteLinksSection value={state.websiteLinks} dispatch={dispatch} />
                 </div>
+
+                <Separator />
 
                 {/* Attachments */}
                 <div onFocus={() => setFocusSection('attachments')}>
@@ -1364,6 +1456,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                     </p>
                   </div>
 
+                  <Separator />
+
                   <div onFocus={() => setFocusSection('response')}>
                     <ResponseTypeSelector
                       value={state.responseType}
@@ -1374,31 +1468,42 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
 
                   {/* Questions — Yes/No only */}
                   {state.responseType === 'yes-no' && (
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-                            Questions
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Custom questions (optional). You may add up to {MAX_QUESTIONS}{' '}
-                            questions.
-                          </p>
+                    <>
+                      <Separator />
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+                              Questions
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Custom questions (optional). You may add up to {MAX_QUESTIONS}{' '}
+                              questions.
+                            </p>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={state.questions.length >= MAX_QUESTIONS}
+                            onClick={() => {
+                              dispatch({ type: 'ADD_QUESTION' });
+                              setFocusSection('questions');
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add a Question
+                          </Button>
                         </div>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={state.questions.length >= MAX_QUESTIONS}
-                          onClick={() => dispatch({ type: 'ADD_QUESTION' })}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add a Question
-                        </Button>
+                        <QuestionBuilder
+                          questions={state.questions}
+                          dispatch={dispatch}
+                          onQuestionFocus={(index) => {
+                            setFocusedQuestionIndex(index);
+                            setFocusSection('questions');
+                          }}
+                        />
                       </div>
-                      <div onFocus={() => setFocusSection('questions')}>
-                        <QuestionBuilder questions={state.questions} dispatch={dispatch} />
-                      </div>
-                    </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -1415,13 +1520,25 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                     Due Date &amp; Reminder
                   </p>
 
+                  <Separator />
+
                   <div onFocus={() => setFocusSection('response')}>
                     <DueDateSection
                       value={state.dueDate}
-                      onChange={(value) => dispatch({ type: 'SET_DUE_DATE', payload: value })}
+                      onChange={(value) => {
+                        clearFieldError('dueDate');
+                        dispatch({ type: 'SET_DUE_DATE', payload: value });
+                      }}
                       required
                     />
+                    {fieldErrors.dueDate && (
+                      <p role="alert" className="mt-1.5 text-sm text-destructive">
+                        {fieldErrors.dueDate}
+                      </p>
+                    )}
                   </div>
+
+                  <Separator />
 
                   <ReminderSection
                     value={state.reminder}
@@ -1446,6 +1563,8 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
                   currentUserName={session.staffName ?? 'Daniel Tan'}
                   defaultEnquiryEmail={session.schoolEmailAddress ?? 'enquiry@school.edu.sg'}
                   focusSection={focusSection}
+                  focusQuestionIndex={focusedQuestionIndex}
+                  onDismissQuestions={() => setFocusSection('response')}
                 />
               </CardContent>
             </Card>
@@ -1499,6 +1618,7 @@ function CreatePostViewInner({ editId }: { editId?: string }) {
         onConfirm={handleScheduleConfirm}
         busy={isSaving}
         scheduleWindow={scheduleWindow}
+        dueDate={selectedType === 'post-with-response' ? state.dueDate : undefined}
       />
     </div>
   );
