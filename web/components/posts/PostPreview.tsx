@@ -125,14 +125,14 @@ function QuestionScreen({
         )}
       </div>
 
-      {/* Submit button */}
+      {/* Next / Submit button */}
       <div className="shrink-0 px-5 pt-3 pb-5">
         <button
           disabled
           type="button"
           className="w-full rounded-full bg-foreground py-3 text-sm font-semibold text-background"
         >
-          Submit
+          {current < total ? 'Next' : 'Submit'}
         </button>
       </div>
     </div>
@@ -263,9 +263,15 @@ const PostPreview = React.memo(function PostPreview({
           {showQuestionView ? (
             <button
               type="button"
-              aria-label="Back to post"
+              aria-label={activeQuestionIndex > 0 ? 'Previous question' : 'Back to post'}
               className="flex items-center justify-center"
-              onClick={dismissQuestionView}
+              onClick={() => {
+                if (activeQuestionIndex > 0) {
+                  setActiveQuestionIndex((i) => i - 1);
+                } else {
+                  dismissQuestionView();
+                }
+              }}
             >
               <ChevronLeft className="h-4 w-4 text-foreground" strokeWidth={2} />
             </button>
