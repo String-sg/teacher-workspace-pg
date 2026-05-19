@@ -1,5 +1,5 @@
 import { CalendarIcon } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Calendar,
@@ -38,6 +38,22 @@ function buildTimeSlots(): { value: string; label: string }[] {
 }
 
 const TIME_SLOTS = buildTimeSlots();
+
+/** Advance a HH:MM time by 30 minutes, capped at 23:30. */
+function nextSlot(time: string): string {
+  const [hStr, mStr] = time.split(':');
+  const totalMin = Number(hStr) * 60 + Number(mStr) + 30;
+  if (totalMin >= 24 * 60) return '23:30';
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** Return true when both datetimes are fully set and start ≥ end. */
+function hasConflict(sDate: string, sTime: string, eDate: string, eTime: string): boolean {
+  if (!sDate || !eDate || !sTime || !eTime) return false;
+  return `${sDate}T${sTime}` >= `${eDate}T${eTime}`;
+}
 
 /** Split a `YYYY-MM-DDTHH:MM` string into its date and time parts. */
 function splitDatetime(dt: string): { date: string; time: string } {
@@ -86,21 +102,50 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
   // Min date for end calendar = start date (end cannot be before start).
   const endMinDate = startDateObj ?? today;
 
+  // Show an error when the user manually picks an end time that conflicts.
+  const [endTimeError, setEndTimeError] = useState(false);
+
+  // Derived conflict state (drives persistent error display).
+  const conflict = hasConflict(startDate, startTime, endDate, endTime);
+
   function handleStartDateChange(dateStr: string) {
-    // Only update the date; keep existing time (or leave empty if none chosen yet).
     const start = startTime ? `${dateStr}T${startTime}` : dateStr;
-    onChange({ start, end: value?.end ?? '', venue: value?.venue });
+    let end = value?.end ?? '';
+
+    // If new start date is after current end date, clear end entirely.
+    if (endDate && dateStr > endDate) {
+      end = '';
+      setEndTimeError(false);
+    } else if (endDate && dateStr === endDate && startTime && endTime && startTime >= endTime) {
+      // Same day — advance end time to avoid conflict.
+      const bumped = nextSlot(startTime);
+      end = `${endDate}T${bumped}`;
+      setEndTimeError(false);
+    }
+
+    onChange({ start, end, venue: value?.venue });
   }
 
   function handleStartTimeChange(time: string) {
-    if (!startDate) return; // date must be chosen first
+    if (!startDate) return;
     const start = `${startDate}T${time}`;
-    onChange({ start, end: value?.end ?? '', venue: value?.venue });
+    let end = value?.end ?? '';
+
+    // Same day and new start time would conflict → advance end time.
+    if (endDate && startDate === endDate && endTime && time >= endTime) {
+      const bumped = nextSlot(time);
+      end = `${endDate}T${bumped}`;
+      setEndTimeError(false);
+    }
+
+    onChange({ start, end, venue: value?.venue });
   }
 
   function handleEndDateChange(dateStr: string) {
     const end = endTime ? `${dateStr}T${endTime}` : dateStr;
     const start = value?.start ?? '';
+    // Clear any lingering end-time error since date changed.
+    setEndTimeError(false);
     onChange({ start: start || end, end, venue: value?.venue });
   }
 
@@ -108,6 +153,8 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
     if (!endDate) return;
     const end = `${endDate}T${time}`;
     const start = value?.start ?? '';
+    // Flag conflict — don't auto-correct here so user sees their pick.
+    setEndTimeError(hasConflict(startDate, startTime, endDate, time));
     onChange({ start: start || end, end, venue: value?.venue });
   }
 
@@ -199,7 +246,10 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
               }}
               disabled={!startDate}
             >
-              <SelectTrigger className="w-[120px] shrink-0">
+              <SelectTrigger
+                className="w-[120px] shrink-0"
+                aria-invalid={endTimeError || conflict ? true : undefined}
+              >
                 <SelectValue placeholder="Time" />
               </SelectTrigger>
               <SelectContent>
@@ -213,6 +263,12 @@ function EventScheduleSection({ value, onChange }: EventScheduleSectionProps) {
           </div>
         </div>
       </div>
+
+      {conflict && (
+        <p role="alert" className="text-sm text-destructive">
+          End date &amp; time must be after the start.
+        </p>
+      )}
     </div>
   );
 }
