@@ -490,7 +490,7 @@ function DropZoneButton({
         e.preventDefault();
         if (e.dataTransfer.files.length > 0) onDrop(e.dataTransfer.files);
       }}
-      className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/25 py-7 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:bg-muted/30"
+      className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-muted-foreground/25 py-4 text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:bg-muted/30"
     >
       {icon}
       <p className="text-sm">Drop {label} here or click to add more</p>
