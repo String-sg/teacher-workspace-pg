@@ -1,20 +1,22 @@
 # PG ↔ TW Integration — Business Requirements
 
-> **Source of truth: the GitHub epics.** These files mirror the issue bodies for in-repo reference, review and diffing. Edit the issue first, then re-sync the matching file here. Mirrors parent tracker [#116](https://github.com/String-sg/teacher-workspace/issues/116).
+> **Source of truth: the GitHub epics.** These files mirror the issue bodies for in-repo reference, review and diffing. Edit the issue first, then re-sync the matching file here. Mirrors parent tracker [#1](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/1).
 
 > **Terminology note.** These reverse-engineered specs use **PG's real code terms** (Announcements, Consent Forms) so they stay accurate to the source. In the **TW product** these are rebranded: **Announcements → Posts**, **Forms / Consent Forms → Posts with responses**. The TW epics/issues use the new names; the underlying feature is the same.
+
+> **Specs updated (Jun 2026):** the per-feature specs below are the engineering team's **Complete Redevelopment Specs** (authoritative - business logic, validation, API contracts). The platform-contract reference further down is retained for context.
 
 ## Epics
 
 | #   | Epic                              | Requirements doc                                                                    | Issue                                                             |
 | --- | --------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| 1   | Announcements: Create & Send      | [epic-1-announcements-create-send](./epic-1-announcements-create-send.md)           | [#118](https://github.com/String-sg/teacher-workspace/issues/118) |
-| 2   | Announcements: Tracking & Chasing | [epic-2-announcements-tracking-chasing](./epic-2-announcements-tracking-chasing.md) | [#119](https://github.com/String-sg/teacher-workspace/issues/119) |
-| 3   | Forms / Consent Collection        | [epic-3-forms-consent](./epic-3-forms-consent.md)                                   | [#120](https://github.com/String-sg/teacher-workspace/issues/120) |
-| 4   | Custom Student Groups             | [epic-4-custom-student-groups](./epic-4-custom-student-groups.md)                   | [#121](https://github.com/String-sg/teacher-workspace/issues/121) |
-| 5   | Parent-Teacher Meeting Scheduling | [epic-5-ptm-scheduling](./epic-5-ptm-scheduling.md)                                 | [#122](https://github.com/String-sg/teacher-workspace/issues/122) |
-| 6   | Reports                           | [epic-6-reports](./epic-6-reports.md)                                               | [#123](https://github.com/String-sg/teacher-workspace/issues/123) |
-| 7   | HeyTalia (AI Drafting Assistant)  | [epic-7-heytalia](./epic-7-heytalia.md)                                             | [#124](https://github.com/String-sg/teacher-workspace/issues/124) |
+| 1   | Posts: Create & Send      | [announcements-1](./announcements-1-pg-reverse-engineer-specs.md)           | [#20](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/20) |
+| 2   | Posts: Tracking & Chasing | [announcements-1](./announcements-1-pg-reverse-engineer-specs.md) | [#9](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/9) |
+| 3   | Posts with Responses        | [forms-1](./forms-1-pg-reverse-engineer-specs.md)                                   | [#5](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/5) |
+| 4   | Custom Student Groups             | [custom-groups-1](./custom-groups-1-pg-reverse-engineer-specs.md)                   | [#6](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/6) |
+| 5   | Parent-Teacher Meeting Scheduling | [ptm-1](./ptm-1-pg-reverse-engineer-specs.md)                                 | [#7](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/7) |
+| 6   | Reports                           | [reports-1](./reports-1-pg-reverse-engineer-specs.md)                                               | [#10](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/10) |
+| 7   | HeyTalia (AI Drafting Assistant)  | [heytalia-1](./heytalia-1-pg-reverse-engineer-specs.md)                                             | [#11](https://github.com/String-sg/teacher-workspace-pg-frontend/issues/11) |
 
 ## How these requirements were derived (read first)
 
