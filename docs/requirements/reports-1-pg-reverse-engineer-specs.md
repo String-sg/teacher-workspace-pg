@@ -1,138 +1,404 @@
-# Feature Specification: Reports
+# Admin Reports - Complete Redevelopment Spec (Staff & Admin)
 
-**Feature Branch**: `006-reports`
 **Created**: 2026-06-09
-**Status**: Reverse-Engineered (brief)
-**Input**: Reverse-engineered from existing codebase (`src/app/pages/StaffReports/`, `src/app/pages/AdminReports/`)
+**Purpose**: Comprehensive reference for frontend redevelopment — business logic, validation, functional behavior, and API contracts.
 
 ---
 
-## Overview
+## 1. Report Types
 
-Reports is a self-service export feature in Parents Gateway Web that lets school staff generate Excel (`.xlsx`) reports about their students. The real codebase exposes exactly **two report types**, surfaced as sub-nav tabs on a single Reports page:
+The system supports **2 report types**:
 
-1. **Onboarding** — custodian (parent) PG onboarding status.
-2. **Travel Declaration** — declaration status over a chosen date range.
-
-There are two parallel pages with near-identical UX, differing only in scope and API path:
-
-- **Staff Reports** (`/staff/reports`) — Form Teacher (FT) / Co-Form Teacher: scoped to the staff member's assigned **form class**.
-- **Admin Reports** (`/admin/reports`, gated by `AdminRoute`) — Staff with Admin rights: scoped to the **whole school**.
-
-For **IHL** schools the Travel Declaration tab is hidden (`!isIhl` gates the `SubNav`), so IHL sees only the Onboarding report with IHL-specific copy. Both reports are **desktop-only** — on mobile a "This report can only be exported on desktop" notice replaces the export controls.
-
-> **Important:** there is **no in-app drill-down or paginated data table** — the "view" of a report _is_ the downloaded Excel file. Exports are generated **client-side** from JSON rows the API returns.
+| Report | Description | Admin | Form Teacher | IHL Compatible |
+|--------|-------------|-------|--------------|----------------|
+| Onboarding Report | Custodian onboarding status per student | Yes (whole school) | Yes (their classes) | Yes |
+| Travel Declaration Report | Travel declarations by custodians | Yes (whole school) | Yes (their classes) | **No** (disabled) |
 
 ---
 
-## User Scenarios & Testing
+## 2. Constants & Constraints
 
-### US-1: Generate Onboarding report for my form class (Staff)
+### 2.1 Date Range Limits (Travel Declaration)
 
-**As a** Form / Co-Form Teacher,
-**I want to** export my form class's custodian onboarding status,
-**So that** I can see which parents have/haven't onboarded onto PG.
+| Constraint | Value |
+|-----------|-------|
+| Max past | 3 months from today (start of month) |
+| Max future | 12 months from today (end of month) |
+| Max range (frontend) | 3 months |
+| Max range (backend) | 4 months |
 
-**Acceptance Criteria:**
+### 2.2 Other
 
-- Staff navigates to `/staff/reports`; the **Onboarding** tab is selected by default.
-- On mount, the page calls `GroupsService.getAssignedGroups()` and renders the staff member's `formClass`.
-- If no form class is assigned, the page shows guidance ("you need a form class… approach Staff with Admin rights") instead of an export button (IHL gets school-info-system worded copy).
-- "Export to Excel" → `downloadStudentOnboardingReport(formClass)` → `GET /api/web/2/staff/school/students/retrieveReport?action=onboardReport`.
-- The workbook has two sheets: **Students** and **Onboarding Status Breakdown**; filename `{schoolCode}-{formClass}-onboarding-report-{timestamp}.xlsx`.
-
-### US-2: Generate Travel Declaration report for my form class (Staff)
-
-**As a** Form / Co-Form Teacher,
-**I want to** export who did/did not declare travel over a date range,
-**So that** I can follow up with non-declaring families.
-
-**Acceptance Criteria:**
-
-- Staff selects the **Travel Declaration** tab (hidden for IHL).
-- Filters: a **declaration status** radio (`Declared (Include travelling and not travelling)` / `Did Not Declare (No declarations made)`) and a **date range** picker.
-- Export is disabled until the date range passes validation (`dateTimeValidationHasError`).
-- "Export to Excel" → `downloadFormClassTravelDeclarationReport(...)` → `POST /api/web/2/staff/school/travelDeclaration` with `{ reportType, startDate, endDate }`; fires `ExportToExcelButtonPressed`.
-- For the "Did Not Declare" case a second **Onboarding Status Breakdown** sheet is appended; otherwise a single **Students** sheet. Empty results yield a placeholder row.
-
-### US-3: Generate school-wide reports (Admin)
-
-**As a** Staff member with Admin rights,
-**I want to** generate Onboarding and Travel Declaration reports for the whole school,
-**So that** I can oversee onboarding and travel compliance across all classes.
-
-**Acceptance Criteria:**
-
-- Admin navigates to `/admin/reports` (route protected by `AdminRoute`).
-- Same two tabs and filters as staff, but scoped to `schoolName` (no form-class lookup; no "without form class" guidance).
-- Onboarding export → `downloadStudentOnboardingReport()` → `GET /api/web/2/schoolAdmins/students?action=onboardReport`; filename `{schoolCode}-onboarding-report-{timestamp}.xlsx`.
-- Travel Declaration export → `POST /api/web/2/schoolAdmins/travelDeclaration`.
-
-### US-4: Switching tabs resets filters
-
-**As a** staff/admin user,
-**I want** filters to reset when I change report tabs,
-**So that** stale date/status selections aren't carried over.
-
-**Acceptance Criteria:**
-
-- Changing tab via `SubNav` resets state to `INITIAL_STATES` (clears status, dates, re-flags `dateTimeValidationHasError`).
+| Constraint | Value |
+|-----------|-------|
+| Export format | Excel (.xlsx) |
+| Mobile support | **No** — reports disabled on mobile |
 
 ---
 
-## Requirements
+## 3. Business Logic Rules
 
-### Functional Requirements
+### 3.1 Access Control
 
-- **FR-1**: Provide exactly two report types — **Onboarding** and **Travel Declaration** — as sub-nav tabs on a single Reports page.
-- **FR-2**: Staff reports scoped to the user's assigned form class (`getAssignedGroups()`); Admin reports scoped to the whole school.
-- **FR-3**: For staff with no assigned form class, suppress export and show guidance copy (IHL variant differs).
-- **FR-4**: Hide the Travel Declaration tab for IHL schools; render IHL-specific descriptions for Onboarding.
-- **FR-5**: Travel Declaration requires two filters: declaration-status radio (Declared / Did Not Declare) and a validated date range; disable export until valid.
-- **FR-6**: All exports produce client-side `.xlsx` (`xlsx` / `xlsx-style` + `file-saver`); the API returns JSON rows that the FE serializes (no server-side file download).
-- **FR-7**: Onboarding exports always include a second **Onboarding Status Breakdown** sheet; Travel Declaration includes it only for "Did Not Declare".
-- **FR-8**: Block all exports on mobile user agents; show a desktop-only notice.
-- **FR-9**: Filenames embed `schoolCode`, scope (form class for staff), report identity, and a timestamp.
-- **FR-10**: Route protection — `/admin/reports` requires admin (`AdminRoute`); `/staff/reports` is a standard staff route.
+| Role | Onboarding Report | Travel Declaration |
+|------|-------------------|-------------------|
+| School Admin | Whole school | Whole school (non-IHL only) |
+| Form/Co-Form Teacher | Their assigned classes only | Their assigned classes only (non-IHL) |
+| IHL Admin | Whole school (IHL variant) | **Disabled** |
+| Other Staff | No access | No access |
 
-### Key Entities
+**Admin** requires 2FA authorization (AdminMultiFactorAuthorizationMiddleware).
 
-| Entity                         | Description                                              |
-| ------------------------------ | -------------------------------------------------------- |
-| Onboarding report row          | Per-student custodian onboarding status (Students sheet) |
-| Travel Declaration report row  | Per-student declaration status over date range           |
-| `ETravelDeclarationReportType` | Enum: `Declared` / `DidNotDeclare` (drives radio + API)  |
-| Onboarding Status Breakdown    | Static explainer sheet appended to certain exports       |
-| `formClass`                    | Staff's assigned form class string (report scope)        |
+**Form Teacher** scope determined by `GroupsService.getAssignedGroups()` — if no class assigned, shows error: "No Form Class assigned".
+
+### 3.2 Onboarding Status Logic
+
+For each custodian (Father, Mother, Caregiver, Legal Guardian):
+
+```
+if (!uinFinNo || !parentPermission):
+    onboardedStatus = 'No Access'
+    canRespondStatus = 'No Access'
+else if (isOnboarded):
+    onboardedStatus = 'Yes'
+else:
+    onboardedStatus = 'No'
+
+if (parentPermission === 'rw'):
+    canRespondStatus = 'Yes'
+else if (parentPermission === 'r'):
+    canRespondStatus = 'No'
+```
+
+### 3.3 Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `Yes` (Onboarded) | Previously logged into PG with Singpass |
+| `No` (Onboarded) | Has not logged into PG yet |
+| `No Access` | No NRIC/FIN in system or custody issue |
+| `Nil` | No such custodian assigned to student |
+| `Yes` (Can Respond) | Has read-write permission (`rw`) |
+| `No` (Can Respond) | Has read-only permission (`r`) |
+
+### 3.4 Relationship Codes
+
+| Code | Display |
+|------|---------|
+| F | Father |
+| M | Mother |
+| G | Caregiver |
+| G4 | Legal Guardian |
+| G2, G3 | Not supported (ignored) |
+
+### 3.5 Parent Permission Codes
+
+| Code | Meaning |
+|------|---------|
+| `rw` | Read-write (can respond to forms) |
+| `r` | Read-only (cannot respond) |
+| null/undefined | No access |
+
+### 3.6 Special Cases
+
+- **Multiple guardians/caregivers**: Creates multiple rows per student (one per guardian)
+- **Deceased parents**: Skipped (not shown)
+- **Deleted parents**: Skipped (not shown)
+- **PreP1 students**: Level/class/serialNo replaced with "PRE-PRIMARY 1"
+- **IHL schools**: "Index No" column replaced with "StudentID" (NRIC/FIN)
+
+### 3.7 Travel Declaration Report Types
+
+| Type | Display Label | Shows |
+|------|--------------|-------|
+| Declared | "Declared (Include travelling and not travelling)" | Students WITH declarations in date range |
+| Did Not Declare | "Did Not Declare (No declarations made)" | Students WITHOUT any declarations in date range |
 
 ---
 
-## Success Criteria
+## 4. Functional Behavior
 
-1. FT/Co-FT can export both reports scoped to their form class; admins can export both school-wide.
-2. Onboarding and Travel Declaration `.xlsx` files open with the correct sheets and naming.
-3. Travel Declaration export is gated on a valid date range and a selected status.
-4. IHL schools see only the Onboarding tab with IHL copy.
-5. Mobile users are blocked with a clear desktop-only message.
-6. Staff without a form class see guidance instead of broken exports.
+### 4.1 Admin Reports Page (`/admin/reports`)
+
+**Tabs**: Onboarding, Travel Declaration
+
+**Tab switching resets state** to initial values.
+
+### 4.2 Staff Reports Page (`/staff/reports`)
+
+**Tabs**: Onboarding, Travel Declaration
+
+**Additional info**: Shows assigned class name(s) (comma-separated if multiple).
+
+**Error state**: If no form class assigned, shows message directing staff to School Cockpit.
+
+### 4.3 Onboarding Report Tab
+
+**No filters** — downloads all data immediately.
+
+**Export button**: "Export to Excel" — always enabled.
+
+**Mobile**: Shows message "This report can only be exported on desktop".
+
+### 4.4 Travel Declaration Report Tab
+
+**Filters**:
+1. **Report Type** (radio buttons): "Declared" or "Did Not Declare"
+2. **Date Range** (date pickers): Start Date and End Date
+
+**Validation**:
+- Both dates required
+- Start date >= today - 3 months (start of month)
+- End date <= today + 12 months (end of month)
+- Date range <= 3 months
+- Start date must be before end date
+
+**Export button**: Disabled until date range is valid.
+
+**Note displayed**: "Eg. If you are interested in the June 2020 School Holidays, you may enter the Start Date (30 May) and End Date (28 June) of the holidays."
+
+### 4.5 Export — Onboarding Report
+
+**File name**:
+- Admin: `{schoolCode}-onboarding-report-{datetime}.xlsx`
+- Staff: `{schoolCode}-{className}-onboarding-report-{datetime}.xlsx`
+
+**Excel structure**:
+- **Sheet 1: "Students"** — main report data
+- **Sheet 2: "Onboarding Status Breakdown"** — explainer table
+
+**Columns (Standard Schools)**:
+| Column | Description |
+|--------|-------------|
+| Level | Student level |
+| Class | Class name |
+| Index No | Class serial number |
+| Student | Student name |
+| Father | Father name |
+| Father Onboarded? | "Logged into PG before" |
+| Father Can Respond? | "If have Singpass to Login" |
+| Mother | Mother name |
+| Mother Onboarded? | Same |
+| Mother Can Respond? | Same |
+| Caregiver | Caregiver name |
+| Caregiver Onboarded? | Same |
+| Caregiver Can Respond? | Same |
+| Legal Guardian | Legal guardian name |
+| Legal Guardian Onboarded? | Same |
+| Legal Guardian Can Respond? | Same |
+
+**Columns (IHL Schools)**:
+- Replaces "Index No" with "StudentID" (NRIC/FIN)
+- Otherwise same structure
+
+**Breakdown Sheet** (Sheet 2):
+| Custodian | Onboarded? | Can Respond? | Meaning |
+|-----------|-----------|-------------|---------|
+| [Name] | No | No | No Singpass or custody issue |
+| [Name] | No | Yes | Eligible for Singpass |
+| [Name] | Yes | No | Onboarded but custody issue |
+| [Name] | Yes | Yes | Fully onboarded and responsive |
+| [Name] | No Access | No Access | NRIC/FIN missing or custody issue |
+| Nil | Nil | Nil | No such custodian |
+
+### 4.6 Export — Travel Declaration Report (Declared)
+
+**File name**: `{schoolCode}-{formClass}-Travel_Declared-{startDate}-{endDate}-on_{currentDateTime}.xlsx`
+
+**Columns**:
+| Column | Description |
+|--------|-------------|
+| Level | Student level |
+| Class | Class name |
+| Index No | Class serial number |
+| Student | Student name |
+| Custodian | Trip declared by (name) |
+| Relationship | Father/Mother/Caregiver/Legal Guardian |
+| Not Travelling During | Yes/No |
+| Country (-City) | Destination |
+| From | Trip start date |
+| To | Trip end date |
+| Date Declared | Declaration date |
+| Time Declared | Declaration time |
+
+### 4.7 Export — Travel Declaration Report (Did Not Declare)
+
+**File name**: `{schoolCode}-{formClass}-Travel_Did_Not_Declare-{startDate}-{endDate}-on_{currentDateTime}.xlsx`
+
+**Columns**: Same as Onboarding Report (shows custodian status for students who haven't declared).
+
+### 4.8 Empty Report Handling
+
+If no records found: placeholder row with text "No records found for {startDate} to {endDate}".
+
+### 4.9 File Name Sanitization
+
+Non-alphanumeric characters replaced with underscore (`_`). Spaces replaced with underscores.
+
+### 4.10 Excel Formatting
+
+- Column wrapping enabled
+- Header row with borders
+- Standard column widths: 13 chars
+- Breakdown sheet widths: 17/14/14/95 chars
+- Row height: 50 points for breakdown header
+
+### 4.11 Analytics Events
+
+| Event | Trigger |
+|-------|---------|
+| ReportsOnboardingTabPressed | Onboarding tab clicked |
+| ReportsTravelDeclarationTabPressed | Travel declaration tab clicked |
+| ExportToExcelButtonPressed | Export button clicked |
 
 ---
 
-## Assumptions
+## 5. API Contracts
 
-1. The BFF report endpoints (`.../retrieveReport?action=onboardReport`, `.../travelDeclaration`) return JSON row arrays plus `metadata.schoolCode`; the FE assembles the workbook.
-2. `isIhl`, `staffSchoolId`, `schoolName` come from Redux `indexPage`.
-3. "Admin" here means a staff member with admin rights (the `AdminRoute` guard), not a separate persona.
-4. The Onboarding Status Breakdown sheet content is static reference data.
-5. Date-range validation limits (3-month window) are enforced by the shared `DateRangePicker`.
+### Base
+
+- **Admin**: `/api/v2/schoolAdmins/...` (requires Admin access scope + 2FA)
+- **Staff**: `/api/v2/staff/school/...` (requires SchoolStaffSessionMiddleware)
+
+### Response Wrapper
+
+```typescript
+{ resultCode: number; message: string; body: T; metadata?: Record<string, any> }
+```
 
 ---
 
-## Jira Mapping
+### 5.1 GET `/schoolAdmins/students?action=onboardReport` — Admin Onboarding Report
 
-| Story                                   | Coverage                                                                                                                                                                                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PGTW-16 — Travel Declaration report** | US-2 (staff/form-class), US-3 (admin/school-wide), FR-5, FR-7. Endpoints: `POST /api/web/2/staff/school/travelDeclaration` (staff), `POST /api/web/2/schoolAdmins/travelDeclaration` (admin).                                      |
-| **PGTW-17 — PG onboarding report**      | US-1 (staff/form-class), US-3 (admin/school-wide), FR-2, FR-7. Endpoints: `GET /api/web/2/staff/school/students/retrieveReport?action=onboardReport` (staff), `GET /api/web/2/schoolAdmins/students?action=onboardReport` (admin). |
+**Query Params**: `action=onboardReport` (required)
 
-**Notes:** access = FT / Co-FT (form-class scope) and Staff-with-Admin (school scope); IHL hides Travel Declaration; both reports are desktop-only; there is **no in-app drill-down table** — the report is the exported Excel file.
+**Auth**: SchoolStaffSessionMiddleware with `accessControlScope: 'Admin'`
+
+**Response**:
+```typescript
+{
+  body: Array<{
+    'Level': string;
+    'Class': string;
+    'Index No': string;                                    // or 'StudentID' for IHL
+    'Student': string;
+    'Father': string;
+    'Father Onboarded?\n(Logged into PG before)': string;  // 'Yes'|'No'|'No Access'|'Nil'
+    'Father Can Respond?\n(If have Singpass to Login)': string;
+    'Mother': string;
+    'Mother Onboarded?\n(Logged into PG before)': string;
+    'Mother Can Respond?\n(If have Singpass to Login)': string;
+    'Caregiver': string;
+    'Caregiver Onboarded?\n(Logged into PG before)': string;
+    'Caregiver Can Respond?\n(If have Singpass to Login)': string;
+    'Legal Guardian': string;
+    'Legal Guardian Onboarded?\n(Logged into PG before)': string;
+    'Legal Guardian Can Respond?\n(If have Singpass to Login)': string;
+  }>;
+  metadata: { schoolCode: string };
+}
+```
+
+---
+
+### 5.2 GET `/staff/school/students/retrieveReport?action=onboardReport` — Staff Onboarding Report
+
+**Query Params**: `action=onboardReport` (required)
+
+**Auth**: SchoolStaffSessionMiddleware
+
+**Response**: Same shape as 5.1 but filtered by teacher's assigned form classes.
+
+**Error**: If no form class assigned, returns error.
+
+---
+
+### 5.3 POST `/schoolAdmins/travelDeclaration` — Admin Travel Declaration Report
+
+**Auth**: SchoolStaffSessionMiddleware with `accessControlScope: 'Admin'`, `IhlEnabled: false`
+
+**Request**:
+```typescript
+{
+  reportType: 'Declared (Include travelling and not travelling)' | 'Did Not Declare (No declarations made)';
+  startDate: string;    // ISO date
+  endDate: string;      // ISO date
+}
+```
+
+**Response (Declared)**:
+```typescript
+{
+  body: Array<{
+    'Level': string;
+    'Class': string;
+    'Index No': string;
+    'Student': string;
+    'Custodian': string;
+    'Relationship': string;
+    'Not Travelling During': string;   // 'Yes'|'No'
+    'Country (-City)': string;
+    'From': string;                    // Date
+    'To': string;                      // Date
+    'Date Declared': string;
+    'Time Declared': string;
+  }>
+}
+```
+
+**Response (Did Not Declare)**:
+```typescript
+{
+  body: Array<{
+    // Same shape as Onboarding Report (custodian status for non-declarers)
+    'Level': string;
+    'Class': string;
+    'Index No': string;
+    'Student': string;
+    'Father': string;
+    'Father Onboarded?\n(Logged into PG before)': string;
+    'Father Can Respond?\n(If have Singpass to Login)': string;
+    // ... (Mother, Caregiver, Legal Guardian same pattern)
+  }>
+}
+```
+
+---
+
+### 5.4 POST `/staff/school/travelDeclaration` — Staff Travel Declaration Report
+
+**Auth**: SchoolStaffSessionMiddleware with `IhlEnabled: false`
+
+**Request**: Same as 5.3.
+
+**Response**: Same as 5.3 but filtered by teacher's assigned form classes.
+
+---
+
+## 6. Error Handling
+
+### 6.1 Validation Errors
+
+| Error | Message |
+|-------|---------|
+| Start after end | "end date must be after start date" |
+| Range too large | "Invalid start date and end date must be within {n} months" |
+| Start too far back | Date range start validation error |
+| End too far forward | Date range end validation error |
+| Invalid report type | "Invalid report type" |
+| No form class | "No Form Class assigned" |
+
+### 6.2 Frontend Error Handling
+
+- API errors: Redirect to error page with resultCode (-500)
+- Excel generation errors: Alert modal "Sorry, something went wrong when saving the {report type} report"
+
+### 6.3 HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 400 | Validation error (dates, report type) |
+| 401 | Unauthorized |
+| 403 | Forbidden (non-admin, IHL for travel) |
+| 500 | Internal error |

@@ -1,282 +1,543 @@
-# Feature Specification: Custom Student Groups
+# Custom Groups - Complete Redevelopment Spec (Staff)
 
-**Feature Branch**: `004-custom-groups`
 **Created**: 2026-06-09
-**Status**: Reverse-Engineered
-**Input**: Reverse-engineered from existing codebase (pgw-web)
+**Purpose**: Comprehensive reference for frontend redevelopment — business logic, validation, functional behavior, and API contracts.
 
 ---
 
-## Overview
+## 1. Constants & Constraints
 
-Custom Student Groups is a roster-management feature in Parents Gateway Web that lets school staff assemble ad-hoc groups of students that cut across class/level/CCA boundaries. Staff create a group by manually selecting students from the school roster or by bulk-uploading an Excel (`.xlsx`) file, then reuse the saved group as a recipient target when creating Posts/Consent Forms/Announcements. Groups support co-ownership-style sharing (any staff a group is shared with gets full edit/share/send rights), edit (rename, add/remove students), deletion by the last remaining owner, and self-removal by non-last owners. The feature has two roster variants: a mainstream-school (MS) variant keyed on student Name + Class, and an Institute-of-Higher-Learning (IHL) variant keyed on Student ID, with a hard cap of 5,000 students per group. File-upload validation runs as an asynchronous, token-and-polling job on the BFF and returns a valid/invalid breakdown with per-row error reasons.
+### 1.1 Group Limits
 
----
-
-## User Scenarios & Testing
-
-### US-1: Create a Custom Group by Manual Student Selection (Staff)
-
-**As a** school staff member,
-**I want to** create a custom group by hand-picking students from my school roster,
-**So that** I can target a bespoke set of students in future posts.
-
-**Acceptance Criteria:**
-
-- Staff navigates to `/groups` and clicks "Create New" (links to `/groups/customGroups/new`), firing analytics `NewCustomGroupButtonPressed`.
-- The Create page (`CustomGroupPage`, `pageType === 'create'`) shows title "Create new group", a mandatory `Title` field (max 120 chars, placeholder "What would you like to call your group?"), and a Students section.
-- Clicking "Add Students" opens a dropdown (`AddStudentDropdownComponent`) with two options: "Add manually" and "Upload via Excel".
-- "Add manually" opens the "Add students" overlay (`AddStudentsComponent`) populated from `StudentService.getStudents()` → `GET /api/web/v2/staff/school/students`.
-- Selected students render in `StudentTable`, sorted by class description then index. Each row has a delete action; deleting with `studentId === null` opens a "Delete all?" modal ("All **N** student(s) will be removed.").
-- The "Create Now" button is enabled only when `groupName.trim().length > 0 && selectedStudentIds.length > 0` (and, for IHL, `selectedStudentIds.length <= 5000`). Label flips to "Creating..." while posting.
-- On submit (analytics `CustomGroupCreateButtonPressed`), the FE dedupes IDs (`_.uniq`) and calls `actions.createGroup` → `POST /api/web/v2/staff/groups/custom` with `{ groupName, selectedSchoolStudents }`.
-- On success: analytics `CustomGroupCreated`, success notification `create_group_success`, redirect to `/groups`.
-- Duplicate-name error (`error.errorReason === 'customGroup name duplicated'`) renders inline: "The title you entered already exists. Please use a different title." (Server enforces uniqueness only for IHL — see FR-7.)
-- A `Prompt` / `beforeunload` guard ("You are about to leave this page. Any unsaved changes will be lost.") fires if the form is edited and not yet posted.
-
-### US-2: Create a Custom Group by Excel File Upload (Staff)
-
-**As a** school staff member,
-**I want to** bulk-add students by uploading an Excel file,
-**So that** I can build large groups without selecting students one by one.
-
-**Acceptance Criteria:**
-
-- From the "Add Students" dropdown, staff clicks "Upload via Excel" (analytics `CustomGroupUploadViaExcelPressed`; on create, starts WOGAA transaction `CREATE_CUSTOM_GROUP_FILE_UPLOAD`). This opens the upload overlay (`UploadStudentsComponent`).
-- "Upload via Excel" is **disabled when the list already has students**; conversely the manual "Add Students" button is disabled once a file-upload result is displayed. The two paths are mutually exclusive.
-- **Accepted file type**: `.xlsx` only (`CUSTOM_GROUP_ACCEPTED_MIME_TYPES`). Wrong type toast: "Only .xlsx file type is allowed." (CSV is **not** accepted.)
-- **Max file size**: 5 MB (`MAX_UPLOAD_FILE_SIZE`). Oversize toast: "You may only add files up to 5 MB." **Max files**: 1.
-- **Max students**: `CUSTOM_GROUP_MAX_STUDENTS_COUNT = 5000`.
-- **Expected columns**:
-  - **MS** (`isIhl === false`): two columns `Name` and `Class`. Copy: "Upload an Excel file (.xlsx) with two columns: 'Name' and 'Class'. The columns can be in any order and any position, as long as they are named correctly." Header matching is case-insensitive and whitespace-trimmed.
-  - **IHL** (`isIhl === true`): one column `Student ID` (`CUSTOM_GROUP_FILE_UPLOAD_COLUMN_HEADER`).
-- First worksheet parsed client-side (`XLSX.read`); user-facing row numbers are `index + 2` (header is row 1).
-- **Client-side validation order & exact messages** (`ValidationMessages`):
-  - Blank file → "The file is empty. Please check it and re-upload."
-  - IHL missing/duplicate header → "The column header must be \"Student ID\". Please amend and re-upload." / "We found duplicate columns with the header \"Student ID\". Please amend and re-upload."
-  - IHL over cap → "You may only upload up to 5000 Student IDs. Please amend and re-upload."
-  - IHL duplicate IDs → "We found N duplicate Student ID(s). Please amend and re-upload."
-  - MS duplicate headers → "The column 'Name' and/or 'Class' appears more than once. Please remove the duplicate(s) and re-upload."
-  - MS missing headers → "The columns 'Name' and/or 'Class' are missing. Please add them and re-upload."
-  - MS missing values → "Your file is missing 'Name' or 'Class' entries in row(s): {rows}{ and N more}. Please update these rows and re-upload." (first 5 rows listed)
-  - MS over cap → "You may only upload up to 5000 students. Please reduce the number and re-upload."
-  - MS duplicate Name+Class → "We found duplicate entries with the same 'Name' and 'Class': • {name in rows …}{ and N more}. Please remove the duplicates and re-upload." (case-insensitive; first 5)
-  - Generic parse failure → "There was an error processing your file. Please check the format and try again." Server failure → "Sorry, an unexpected error occurred on our side. Please try again later."
-- On passing client validation, rows go to the BFF for **server-side roster matching**:
-  - `POST /api/web/v2/staff/groups/custom/validateStudents` with `[{ studentId }]` (IHL) or `[{ name, className }]` (MS). **Asynchronous**: BFF stores a `pending` result in Redis (10-min TTL) and returns a signed `token`.
-  - FE polls `POST /api/web/v2/staff/groups/custom/validateStudents/results` with `{ token }` every 3 s, up to 100 attempts, until `status === 'success'` (throws on `error`).
-- The result (`{ validStudents, invalidStudents }`) renders in collapsible accordions "Valid students (N)" / "Invalid students (N)" with per-row reasons. Header shows filename + size + "Total unique students".
-- Only `validStudents.pgStudentId` become the group's students; the group can be created from the valid subset while invalid rows are reported.
-- Removing the file opens a "Remove file?" modal which clears students and the validation result.
-
-### US-3: View Custom Groups List (Staff)
-
-**As a** school staff member,
-**I want to** see all custom groups I own or that are shared with me,
-**So that** I can manage them.
-
-**Acceptance Criteria:**
-
-- `/groups` (`GroupsPage`) renders an "Assigned Groups" section (US-9) above a "Custom Groups" section.
-- `getGroupsStaffOwns()` → `GET /api/web/v2/staff/groups/custom?type=summary` returns `IGroupSummaryDetails[]` (`id`, `groupName`, `numberOfStaff`, `numberOfStudents`).
-- Each row shows the name + student count; a shared icon prefixes the name when `numberOfStaff > 1`.
-- Empty state: "You have not created any groups yet." / "Try creating one now!"
-- Only groups with `numberOfStudents > 0` are returned. Clicking a row → `/groups/customGroups/{id}`.
-
-### US-4: View Custom Group Details (Staff)
-
-**As a** school staff member,
-**I want to** open a custom group and review its members and metadata,
-**So that** I can verify the roster and decide on actions.
-
-**Acceptance Criteria:**
-
-- `/groups/customGroups/:id` (`CustomGroupDetails`); `getSingleGroupWithStudents(id)` → `GET /api/web/v2/staff/groups/custom/:id` (analytics `CustomGroupViewed`).
-- Header shows name + "Custom Group" label. Two tabs: "Students (N)" (default) and "Details".
-- **Students tab**: members grouped by class (sorted by `classSerialNo`); each row shows name, index/UIN (MS) or Student ID (IHL), gender, and an "Onboarded & Can Respond" status icon. `-404` redirect if the group isn't in the owned list.
-- **Details tab**: "Created on {date} by {createdBy}." and "Group shared with" = owner names. "OTHER ACTIONS" exposes Edit / Share / Delete-or-Remove.
-- **IHL only**: an "Export to Excel" button on the Students tab (desktop). Columns: Student ID, Name, Class, Course.
-
-### US-5: Edit a Custom Group (Staff)
-
-**As a** staff member with access to a group,
-**I want to** rename it and add/remove students,
-**So that** I can keep the roster current.
-
-**Acceptance Criteria:**
-
-- Details → "Edit Group" → `/groups/customGroups/:id/edit` (`CustomGroupPage`, `pageType === 'edit'`).
-- `getGroupData(id)` → `GET /api/web/v2/staff/groups/custom/:id` pre-populates `groupName` + `selectedStudentIds`.
-- Both manual add and Excel upload available. "Save" enabled only when changed (`isFormEdited`) and valid → `PUT /api/web/v2/staff/groups/custom/:id` with `{ groupName, selectedSchoolStudents }`.
-- On success: notification `edit_group_success`, redirect to `/groups/customGroups/:id`.
-
-### US-6: Share a Custom Group with Other Staff (Staff)
-
-**As a** staff member who owns/has access to a group,
-**I want to** share it with other staff,
-**So that** they can also send to and manage the group.
-
-**Acceptance Criteria:**
-
-- Details → "Share this custom group" (body: "You will be granting access to edit this group. Please be certain.") → `ShareGroupOverlay`.
-- Pick staff via `ShareStaffComboBox`. "Share group" disabled until ≥1 selected.
-- **Permissions model is co-ownership, not editor/viewer.** The overlay states verbatim the granted rights: **View and send to the group**, **Edit the group name**, **Add or delete students**, **Share the group with other staff**. Shared staff become `owners` with the full action set.
-- On confirm → `PUT /api/web/v2/staff/groups/custom/:id/share` with `{ selectedStaff }`. Server validates same-school, not-already-owner, and emails the added staff.
-
-### US-7: Delete a Custom Group (Last Owner) (Staff)
-
-**As a** staff member who is the sole owner of a group,
-**I want to** delete it permanently,
-**So that** obsolete groups are removed.
-
-**Acceptance Criteria:**
-
-- The Delete action appears **only when `owners.length === 1`** and the current staff is that owner. Surfaces an `isPartOfMessageGroup` warning when used by a message group.
-- Confirm → `DELETE /api/web/v2/staff/groups/custom/:id`. On success: redirect to `/groups`, notification `delete_group_success`.
-- Server guard: deletion only proceeds when the requester is the **last** remaining owner; else `{ success: false, reason: 'Invalid custom group or Staff not last owner' }`.
-- **Multi-select / bulk delete is NOT implemented in pgw-web.** Deletion is per-group from the detail page only. (See Assumptions #6.)
-
-### US-8: Remove Own Access from a Shared Group (Non-Last Owner) (Staff)
-
-**As a** staff member sharing a group with others,
-**I want to** remove my own access,
-**So that** I stop seeing/sending to a group I no longer need, without affecting other owners.
-
-**Acceptance Criteria:**
-
-- The Remove action appears **only when `owners.length > 1`** and the current staff is among them (body: "You will no longer be able to select this group when creating new posts.").
-- Confirm → `PUT /api/web/v2/staff/groups/custom/:id/removeAccess`. On success: redirect `/groups`, notification `remove_access_group_success`.
-- Server guard: only proceeds when more than one owner exists and the requester is one of them (the last owner must Delete instead).
-
-### US-9: View Assigned (Auto-Provisioned School Cockpit) Groups (Staff)
-
-**As a** school staff member,
-**I want to** see the class and CCA groups assigned to me by School Cockpit,
-**So that** I can deep-link into them without creating anything.
-
-**Acceptance Criteria:**
-
-- On `/groups`, `getAssignedGroups()` → `GET /api/web/v2/staff/groups/assigned?type=summary` populates an "Assigned Groups" section (shown only when classes or CCA groups exist).
-- For MS the title includes the academic year; for IHL it is just "Assigned Groups".
-- Assigned **class** → `/groups/class/details/:id`; assigned **CCA** → `/groups/cca/details/:id`.
-- These are derived from SC staff allocations (read-only) — not custom groups, no create/edit/share/delete. There is **no separate "SC custom group" entity** — PGTW-15's "SC custom group" maps to this assigned grouping.
-
-### US-10: Reuse a Custom Group as a Post Recipient (Staff)
-
-**As a** staff member composing a post/consent form/announcement,
-**I want to** select a saved custom group as a recipient target,
-**So that** I don't re-select students each time.
-
-**Acceptance Criteria:**
-
-- The recipient picker (`StudentGroupsComboBox`) exposes a "Group" tab alongside Class / Level / School / CCA / Individual; custom groups surface there (`GroupTypes.GROUP = 'group'`), with an inline "+ Create Custom Group" link.
-- A selected group resolves to its current members at send time; recipient counts via `POST .../groups/student/count`. Self-removal (US-8) and deletion (US-7) make the group unavailable as a future recipient.
-
-### US-11: IHL Variant (Student ID vs Index) (Staff)
-
-**As a** staff member at an Institute of Higher Learning,
-**I want to** identify students by Student ID rather than class index,
-**So that** rosters match my institution's records.
-
-**Acceptance Criteria:**
-
-- `isIhl` (Redux `indexPage.isIhl`, server-derived via `IHL_SCHOOL_IDS`) switches all identity displays (Student ID vs index/UIN), the upload schema (Student ID vs Name+Class), the valid/invalid result tables, and IHL-only Excel export on the detail Students tab.
-- The 5,000 cap is gated for IHL at the UI submit, on upload validation, and server-side; MS create/edit don't gate the cap in the button but the BFF still rejects > 5000 on upload.
-- IHL additionally enforces **unique group names** server-side on create/edit; MS does not.
+| Constraint | Value |
+|-----------|-------|
+| Group name min length | 1 character |
+| Group name max length | 120 characters |
+| Max students per group | 5,000 |
+| File upload format | `.xlsx` only |
+| File MIME type | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` |
+| Validation result cache TTL | 10 minutes (Redis) |
 
 ---
 
-## Requirements
+## 2. Business Logic Rules
 
-### Functional Requirements
+### 2.1 Group Types Enum
 
-#### FR-1: Group Creation (manual)
+| Value | Label | Usage |
+|-------|-------|-------|
+| `school` | School | All students in school |
+| `class` | Class | Students in a class |
+| `level` | Level | Students in a level |
+| `group` | Custom Group | Custom staff-created group |
+| `cca` | CCA | Co-curricular activity |
 
-- A group requires a non-empty `groupName` (UI max 120 chars) and at least one student.
-- Manual selection sources the roster from `GET /api/web/v2/staff/school/students` and submits deduped `selectedSchoolStudents` to `POST /api/web/v2/staff/groups/custom`.
-- Server validates each student exists, is in the school, has an active allocation and a level; else `'custom group has invalid student'`. Duplicate IDs → `'customGroups has duplicate elements'`. Empty target → `'customGroups targets cannot be empty'`.
+### 2.2 Ownership Model
 
-#### FR-2: File Upload + Validation
+- Multiple staff can own a single group (shared ownership)
+- Creator is automatically first owner
+- Additional owners added via "Share" action
+- Only owners can view/edit the group
+- Groups are school-scoped (isolated by `customGroupSchoolCode`)
 
-- **Accepted type**: `.xlsx` only. **Max size**: 5 MB. **Max files**: 1. **Max students**: 5,000.
-- **MS columns**: `Name`, `Class` (any order, case-insensitive, trimmed). **IHL column**: `Student ID`.
-- Two-stage validation: (1) client-side structural checks with the exact `ValidationMessages` strings; (2) server-side roster matching via an async token + Redis + 3 s polling job.
-- Per-row invalid reasons (`CUSTOM_GROUP_FILE_UPLOAD_INVALID_MESSAGES`): IHL `Not found` / `Currently inactive` / `No level`; MS `Name not found…` / `Class not found…` / `Name and class do not match…` / `Student is marked as inactive…`. Row numbers are `excel index + 2`.
-- Only valid students are added; the group may be created with the valid subset. Manual and upload paths are mutually exclusive within one editing session.
+### 2.3 Access Control
 
-#### FR-3: Sharing / Permissions
+| Action | Owner | Shared Staff | Non-Owner |
+|--------|-------|-------------|-----------|
+| View group | Yes | Yes | No |
+| Edit group (name/students) | Yes | Yes | No |
+| Share with others | Yes | Yes | No |
+| Delete group | Only if LAST owner | No | No |
+| Remove own access | Only if other owners exist | Only if other owners exist | N/A |
 
-- Sharing is **co-ownership**: every shared staff becomes an `owner` with rights to view, send to, rename, add/remove students, and re-share. **No editor/viewer distinction.**
-- `PUT .../groups/custom/:id/share` with `{ selectedStaff }`. Server rejects out-of-school or already-owner targets; sends a share-notification email.
+### 2.4 Delete vs Remove Access
 
-#### FR-4: Lifecycle / Edit / Delete / Remove-access
+| Condition | Action Available |
+|-----------|----------------|
+| Staff is LAST owner | Delete (permanently removes group) |
+| Staff is one of multiple owners | Remove Access (removes self, group persists) |
+| Staff is one of multiple owners | Cannot delete (must remove access instead) |
 
-- Edit: `PUT .../groups/custom/:id` (rename + replace student set). Save gated on actual change + validity.
-- Delete (last owner only): `DELETE .../groups/custom/:id` (server "last owner" guard).
-- Remove access (non-last owner only): `PUT .../groups/custom/:id/removeAccess`.
-- Delete vs Remove chosen by owner count in the UI. **No bulk/multi-select delete exists.**
+### 2.5 Message Group Impact
 
-#### FR-5: SC / Assigned Groups Integration
+- If group is part of a message group, deletion/removal also removes it from message groups
+- Warning shown: "This group is part of a message group. Deleting it will also remove it from your message groups."
 
-- Assigned class/CCA groups come from `GET .../groups/assigned?type=summary` and deep-link to read-only `/groups/class/details/:id` and `/groups/cca/details/:id`. Auto-provisioned from SC allocations; no CRUD/share. No standalone SC-custom-group entity exists.
+### 2.6 Soft Delete
 
-#### FR-6: Reuse as Recipients
+- Groups use `isDeleted` boolean flag
+- Deleted groups remain in database for audit trail
+- Queries filter out deleted groups
 
-- Saved custom groups appear under the "Group" tab of `StudentGroupsComboBox` when composing posts/forms/announcements, with an inline "+ Create Custom Group" shortcut. Recipient counts via `POST .../groups/student/count`.
+### 2.7 Usage as Target
 
-#### FR-7: Roles / IHL / Variants
-
-- **Owner (creator or shared)**: full edit/share/send; delete only if last owner; remove-access only if not last owner. All owners are equal.
-- **IHL**: Student-ID-keyed upload/match/display; IHL-only Excel export; 5,000 cap gated in UI submit; unique group name enforced server-side.
-- **MS**: Name+Class-keyed; UIN/FIN + index display; no UI submit cap (BFF still caps upload at 5,000); group-name uniqueness not enforced.
-
-#### FR-8: Navigation Guard
-
-- Create/Edit pages guard accidental navigation via `Prompt` + `beforeunload` while dirty and not yet posted; Safari bfcache defeated via `onpageshow`.
-
-### Key Entities
-
-| Entity                              | Description                                                                                                                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `CustomGroup`                       | A staff-owned group: `id`, `groupName`, `createdBy`, `createdAt`, `owners[]`, `studentsList[]`, `isPartOfMessageGroup`.                                                  |
-| `IGroupSummaryDetails`              | List-row projection: `id`, `groupName`, `numberOfStaff`, `numberOfStudents` (only groups with > 0 students).                                                             |
-| `CustomGroupMember`                 | A student in a group: `studentId`, `studentName`, `className`, `classSerialNo`, `levelCode/Description`, `gender`, `uinFinNo`, `schoolStudentId` (IHL), onboarding flag. |
-| `CustomGroupOwner`                  | Staff with full access (`staffId`, `staffName`) — the join that encodes co-ownership/sharing.                                                                            |
-| `ValidateStudents…Request/Response` | Upload payload `{ studentId }` (IHL) / `{ name, className }` (MS); response `{ token }`; poll result `{ status, data: { validStudents, invalidStudents } }`.             |
-| Assigned / SC group                 | Auto-provisioned `class`/`cca` targets from SC; read-only deep-links.                                                                                                    |
-| `StudentType` enum                  | `IHL` / `MS` — selects the upload/validation/display variant.                                                                                                            |
+Custom groups appear as target option (type = `'group'`) in:
+- Announcements
+- Consent Forms
+- Meetings (PTM)
 
 ---
 
-## Success Criteria
+## 3. Validation Rules
 
-1. **Manual creation**: Staff can create a named group from hand-picked students and see it in the list and as a post recipient.
-2. **Upload creation**: A valid `.xlsx` (≤ 5 MB, correct columns, ≤ 5,000 rows) produces a correct valid/invalid breakdown; a group can be created from the valid subset; every encoded validation message renders verbatim.
-3. **Async validation robustness**: Token issuance, Redis `pending` seeding, and 3-second polling resolve without UI hang; 10-minute TTL / 100-attempt ceiling respected.
-4. **Sharing/co-ownership**: Sharing grants the full action set, triggers the email, and rejects out-of-school or duplicate owners.
-5. **Lifecycle guards**: Delete only for last owner; Remove-access only for non-last owners; the UI shows the correct one based on owner count.
-6. **IHL/MS parity**: Identity columns, upload schema, export availability, name-uniqueness, and the 5,000 cap behave per variant.
-7. **Reuse**: A saved group is selectable under the recipient "Group" tab and resolves to its current membership.
+### 3.1 Group Name
+
+| Rule | Detail |
+|------|--------|
+| Length | 1-120 characters |
+| Trimmed | Whitespace trimmed before save |
+| Uniqueness | Must be unique within school (IHL schools enforce this) |
+
+### 3.2 Student List
+
+| Rule | Detail |
+|------|--------|
+| Non-empty | At least 1 student required |
+| No duplicates | Duplicate student IDs rejected |
+| Max count | Cannot exceed 5,000 |
+| Validity | Each student must pass validity checks |
+
+### 3.3 Student Validity Checks
+
+Each student must:
+1. Exist in database
+2. Not be marked as deleted
+3. Not have status code 'I' (inactive)
+4. Belong to the same school
+5. Have class allocation (not deleted)
+6. Have assigned level code
+
+### 3.4 File Upload Validation
+
+**IHL Format** (single column):
+| Rule | Detail |
+|------|--------|
+| Column header | Exactly "Student ID" (case-sensitive) |
+| Data | UinFinNo values |
+| No duplicate headers | Rejected |
+| No duplicate IDs | Rejected |
+| Max rows | 5,000 |
+| Non-empty | File cannot be empty |
+
+**MS (Mainstream Schools) Format** (two columns):
+| Rule | Detail |
+|------|--------|
+| Column headers | "Name" AND "Class" (both required) |
+| No duplicate headers | Rejected |
+| No missing values | Both columns must have data in each row |
+| No duplicate Name+Class combos | Rejected |
+| Class must exist | In school for current academic year |
+| Name matching | Case-insensitive |
+| Max rows | 5,000 |
+| Non-empty | File cannot be empty |
+
+### 3.5 File Upload Error Messages
+
+| Code | Message |
+|------|---------|
+| NOT_FOUND | Not found |
+| CURRENTLY_INACTIVE | Currently inactive |
+| NO_LEVEL | No level |
+| MS_CURRENTLY_INACTIVE | Student is marked as inactive. Remove from uploaded file. |
+| MS_NAME_NOT_FOUND | Name not found in school. Check that name matches the school system records. |
+| MS_CLASS_NOT_FOUND | Class not found in school. Check that class matches the school system records. |
+| MS_STUDENT_IN_CLASS_NOT_FOUND | Name and class do not match. Check that name/class are correct. |
 
 ---
 
-## Assumptions
+## 4. Functional Behavior
 
-1. The backend is a Node/Express BFF colocated with the React app (Sequelize via `@pgw/db-migration`); routes under `/api/web/v2/staff/groups/custom`.
-2. File parsing happens **client-side** (`xlsx`); only structurally valid rows are sent to the BFF, which performs roster matching against School Cockpit data.
-3. Upload validation is intentionally asynchronous (token + Redis + polling) to tolerate large files (up to 5,000 students).
-4. `isIhl` is derived from school configuration (`IHL_SCHOOL_IDS`), exposed via Redux `indexPage.isIhl`.
-5. CSV is **not** an accepted upload format — only `.xlsx`.
-6. **No multi-select/bulk group deletion exists in pgw-web** (PGTW-20's "multi-select delete" is not present). Deletion is single-group from the detail page, governed by the last-owner guard. Flagged as a gap rather than invented.
-7. "SC custom group" (PGTW-15) corresponds to the read-only Assigned (class/CCA) groups; there is no separate SC-owned custom-group write path.
-8. Group-name uniqueness is enforced only for IHL schools server-side.
+### 4.1 Create Group Flow
+
+1. Staff enters group name (1-120 chars)
+2. Staff adds students via:
+   - **Manual add**: Individual student selection via dropdown/combo box
+   - **Excel upload**: Batch upload via .xlsx file
+3. Student list validated (max 5000, no duplicates, all valid)
+4. On success: redirect to group details page + success notification
+
+### 4.2 Edit Group Flow
+
+1. Staff navigates to group detail and clicks Edit
+2. Can change group name and/or replace entire student list
+3. Same validation as create
+4. On success: success notification
+
+### 4.3 Share Group Flow
+
+1. Owner clicks "Share" button
+2. Selects staff members (must be in same school, not already owners)
+3. On success:
+   - Staff added as co-owners
+   - Email notification sent to shared staff (SES template: `CustomGroupShare`)
+   - Success notification shown
+
+### 4.4 Delete Group Flow
+
+1. Only available if staff is LAST remaining owner
+2. Confirmation modal with warning
+3. If part of message group: additional warning shown
+4. On confirm: soft delete + redirect to list + success notification
+
+### 4.5 Remove Access Flow
+
+1. Available if other owners exist
+2. Confirmation modal
+3. If part of message group: additional warning shown
+4. On confirm: removes own ownership + redirect to list
+
+### 4.6 Excel Upload Flow (Async)
+
+1. Staff selects .xlsx file
+2. Frontend calls `POST /validateStudents` with parsed data
+3. Server returns token immediately (UUID)
+4. Server processes validation in background (Redis-cached results)
+5. Frontend polls `POST /validateStudents/results` with token
+6. Results show valid/invalid students with error reasons
+7. Invalid students limited to 5 displayed entries + "+X more" indicator
+8. Staff can proceed with valid students or fix and re-upload
+
+### 4.7 List Page
+
+**Displayed per group**:
+- Group name
+- Number of staff (owners)
+- Number of students
+- Actions: View, Edit, Share, Delete/Remove Access
+
+### 4.8 Detail Page — Tabs
+
+**Students Tab**:
+- Student list table with: Name, Class, Level, Index Number
+- IHL variant: Student ID (UIN/FIN) instead of Index Number
+- Parent onboarding status indicator
+- Legal guardian/caregiver indicator
+
+**Details Tab**:
+- Group name
+- Created by (staff name)
+- Created date
+- Owners list (staff names)
+- Is part of message group (boolean)
+
+### 4.9 IHL vs MS Behavior
+
+**IHL Schools**:
+- File upload uses single "Student ID" column
+- Group name uniqueness enforced
+- Student lookup by UinFinNo
+- Detail view shows Student ID instead of Index Number
+
+**MS Schools**:
+- File upload uses "Name" + "Class" columns
+- Case-insensitive name matching
+- Student lookup by name/class combination
+
+### 4.10 Analytics Events
+
+| Event | Trigger |
+|-------|---------|
+| NewCustomGroupButtonPressed | Create button clicked |
+| CustomGroupCreated | Group successfully created |
+| CustomGroupCreateButtonPressed | Create confirm clicked |
+| CustomGroupSaveButtonPressed | Save (edit) clicked |
+| CustomGroupEditButtonPressed | Edit button clicked |
+| CustomGroupShareButtonPressed | Share button clicked |
+| CustomGroupDeleteButtonPressed | Delete button clicked |
+| CustomGroupRemoveAccessButtonPressed | Remove access clicked |
+| CustomGroupUpdated | Edit completed |
+| CustomGroupDeleted | Delete completed |
+| CustomGroupViewed | Detail page loaded |
+| CustomGroupShared | Share completed |
+| CustomGroupStudentTabPressed | Students tab clicked |
+| CustomGroupDetailsTabPressed | Details tab clicked |
+| CustomGroupUploadViaExcelPressed | Upload button clicked |
+| CustomGroupDropzoneDropFile | File dropped |
+| CustomGroupExcelUploadSuccess | Upload validation passed |
+| CustomGroupExcelUploadFailure | Upload validation failed |
+| CustomGroupExcelUploadModalClose | Upload modal closed |
+| CustomGroupCancelPressed | Cancel action |
 
 ---
 
-## Jira Mapping
+## 5. API Contracts
 
-- **PGTW-13 — Create custom group (manual + file upload)**: US-1 (manual), US-2 (Excel upload), US-11 (IHL); FR-1, FR-2, FR-7, FR-8.
-- **PGTW-14 — Share + edit custom group**: US-5 (edit), US-6 (share); FR-3, FR-4.
-- **PGTW-15 — SC custom group / auto-provisioned groups**: US-9 (Assigned/SC groups); FR-5. (No standalone SC-custom-group write path exists.)
-- **PGTW-20 — Delete (single + multi-select)**: US-7 (single delete, last-owner guard), US-8 (remove access); FR-4. **Multi-select delete is NOT implemented in pgw-web — net-new for TW.**
-- **Cross-cutting — Reuse as recipients**: US-10; FR-6.
+### Base
+
+- **Base URL**: `/api/v2`
+- **Staff**: `/api/v2/staff/groups`
+- **Auth**: SchoolStaffSessionMiddleware
+
+### Response Wrapper (all endpoints)
+
+```typescript
+{ resultCode: number; message: string; body: T; metadata?: Record<string, any> }
+```
+
+---
+
+### 5.1 POST `/staff/groups/custom` — Create Group
+
+**Request**:
+```typescript
+{
+  groupName: string;                    // 1-120 chars, trimmed
+  selectedSchoolStudents: number[];     // Student IDs, no duplicates, max 5000
+}
+```
+
+**Response**: `{ body: { id: number } }`
+
+---
+
+### 5.2 GET `/staff/groups/custom` — List Groups
+
+**Query Params**: `type?: 'summary'`
+
+**Response (summary)**:
+```typescript
+{
+  body: Array<{
+    id: number;
+    groupName: string;
+    numberOfStaff: number;
+    numberOfStudents: number;
+  }>
+}
+```
+
+**Response (full)**:
+```typescript
+{
+  body: Array<{
+    id: number;
+    groupName: string;
+    createdBy: string;
+    createdAt: Date;
+    owners: Array<{ staffName: string; staffId: number }>;
+    studentsList: Array<{
+      studentId: number;
+      studentName: string;
+      gender: string;
+      classSerialNo: string;
+      className: string;
+      levelCode: string;
+      levelDescription: string;
+      hasParentsOnboardedAndCanConsent?: boolean;
+      hasLegalGuardianOrCaregiver?: boolean;
+      uinFinNo?: string;
+      displayName?: string;
+    }>;
+    isPartOfMessageGroup: boolean;
+  }>
+}
+```
+
+---
+
+### 5.3 GET `/staff/groups/custom/:customGroupId` — Get Single Group
+
+**Path Params**: `customGroupId: number`
+
+**Response**: Same shape as full list (single object in array).
+
+---
+
+### 5.4 PUT `/staff/groups/custom/:customGroupId` — Edit Group
+
+**Path Params**: `customGroupId: number`
+
+**Request**:
+```typescript
+{
+  groupName: string;                    // Max 120 chars
+  selectedSchoolStudents: number[];     // Must be unique, max 5000
+}
+```
+
+**Response**: `{ body: true }`
+
+---
+
+### 5.5 PUT `/staff/groups/custom/:customGroupId/share` — Share Group
+
+**Path Params**: `customGroupId: number`
+
+**Request**:
+```typescript
+{
+  selectedStaff: number[];   // Staff IDs, must be unique, same school, not already owners
+}
+```
+
+**Response**: `{ body: true }`
+
+Triggers email notification to shared staff.
+
+---
+
+### 5.6 DELETE `/staff/groups/custom/:customGroupId` — Delete Group
+
+**Path Params**: `customGroupId: number`
+
+**Response**: `{ body: { success: boolean; reason?: string } }`
+
+Fails with reason if staff is not the last owner.
+
+---
+
+### 5.7 PUT `/staff/groups/custom/:customGroupId/removeAccess` — Remove Own Access
+
+**Path Params**: `customGroupId: number`
+
+**Request**: None.
+
+**Response**: `{ body: { success: boolean } }`
+
+If staff is last owner, attempts delete instead.
+
+---
+
+### 5.8 POST `/staff/groups/custom/validateStudents` — Start File Validation
+
+**Request (IHL)**:
+```typescript
+Array<{ studentId: string }>   // UinFinNo values
+```
+
+**Request (MS)**:
+```typescript
+Array<{ name: string; className: string }>
+```
+
+**Response**: `{ body: { token: string } }` (JWT token, 10-minute expiry)
+
+---
+
+### 5.9 POST `/staff/groups/custom/validateStudents/results` — Poll Validation Results
+
+**Request**:
+```typescript
+{ token: string }
+```
+
+**Response**:
+```typescript
+{
+  body: {
+    status: 'pending' | 'success' | 'error';
+    data: {
+      validStudents: Array<{
+        pgStudentId: number;
+        studentId: string;
+        studentName: string;
+        className: string;
+        classCode: string;
+        levelCode: string;
+        levelCodeDescription: string;
+        uinFinNo?: string;
+        indexNumber?: string;
+        cca?: Array<{ ccaId: number; ccaDescription: string }>;
+      }>;
+      invalidStudents: Array<{
+        message: string;        // Error reason
+        row: number;            // Excel row number (starts at 2)
+        studentId?: string;     // IHL
+        name?: string;          // MS
+        className?: string;     // MS
+      }>;
+    } | null;
+    error: string | null;
+  }
+}
+```
+
+---
+
+### 5.10 GET `/staff/groups/assigned` — Get Assigned Groups (Classes + CCAs)
+
+**Query Params**: `type?: 'summary'`
+
+**Response**:
+```typescript
+{
+  body: {
+    classes: Array<{
+      className: string;
+      classId: number;
+      classCode: string;
+      schoolId: number;
+      academicYear: string;
+      studentList?: Array<{
+        classCode: string;
+        className: string;
+        displayName: string;
+        classSerialNo: string;
+        studentId: number;
+        studentName: string;
+        gender: string;
+        hasParentsOnboardedAndCanConsent: boolean;
+        hasLegalGuardianOrCaregiver: boolean;
+      }>;
+    }>;
+    ccaGroups: Array<{ ccaId: number; ccaDescription: string }>;
+  }
+}
+```
+
+---
+
+### 5.11 POST `/staff/groups/student/count` — Count Students in Groups
+
+**Request**:
+```typescript
+{
+  acadYear: string;
+  studentGroups: Array<{ type: 'school'|'class'|'level'|'group'|'cca'; id: string }>;
+}
+```
+
+**Response**: `{ body: { numberOfStudents: number } }`
+
+---
+
+### 5.12 GET `/staff/groups/cca/students/:ccaId` — Get CCA Students
+
+**Path Params**: `ccaId: number`
+
+**Response**:
+```typescript
+{
+  body: {
+    numOfStudents: number;
+    cca: string;
+    classes: Record<string, Array<{ classSerialNo: number; displayName: string; studentId: number; studentName: string }>>;
+  }
+}
+```
+
+---
+
+## 6. Error Handling
+
+### 6.1 Business Logic Errors
+
+| Error | Message |
+|-------|---------|
+| Duplicate group name | "customGroup name duplicated" |
+| Max students exceeded | "customGroup has reached the maximum student limit" |
+| Duplicate students | "customGroups has duplicate elements" |
+| Invalid student | "custom group has invalid student" |
+| Group not found | "customGroups is not found" |
+| Not last owner (delete) | "Invalid custom group or Staff not last owner" |
+
+### 6.2 HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 400 | Validation error |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Group not found |
+| 500 | Internal error |

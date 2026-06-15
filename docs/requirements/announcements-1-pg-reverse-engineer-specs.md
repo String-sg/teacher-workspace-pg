@@ -1,318 +1,638 @@
-# Feature Specification: Announcements
+# Announcements - Complete Redevelopment Spec (Staff & Admin)
 
-**Feature Branch**: `001-announcements`
 **Created**: 2026-06-09
-**Status**: Reverse-Engineered
-**Input**: Reverse-engineered from existing codebase (`pgw-web`)
+**Purpose**: Comprehensive reference for frontend redevelopment — business logic, validation, functional behavior, and API contracts.
 
 ---
 
-## Overview
+## 1. Constants & Constraints
 
-Announcements is a one-way communication feature in Parents Gateway Web that lets school staff broadcast information to parents. Unlike Consent Forms, announcements collect **no parental response** — they track only whether each recipient parent has **read** the post. Staff create announcements targeting student groups (and individual students), assign co-owning staff-in-charge, attach rich-text content, web links, file attachments, and a photo gallery, optionally add in-app shortcuts, and either post immediately, save as a draft (with autosave), or schedule for future sending. After posting, staff track read status per student, filter the recipient table, export to Excel, and duplicate or delete the post. School admins get a read-only oversight list. The feature is a React frontend backed by a Node/Express BFF (`src/server/apiv2/staff/...` and `.../school-admin/...`) using Sequelize models from `@pgw/db-migration`.
+### 1.1 Character Limits
 
----
+| Field | Max Length |
+|-------|-----------|
+| Title | 120 characters |
+| Description (rich text) | 2,000 characters (plain text count) |
+| Enquiry email | 250 characters |
+| Message to Schools (HQ only) | 2,500 characters |
 
-## User Scenarios & Testing
+### 1.2 File Upload Limits
 
-### US-1: Create and Post an Announcement (Staff)
+| Constraint | Value |
+|-----------|-------|
+| Max attachments | 3 files |
+| Max photos | 12 photos |
+| Max cover photos | 3 |
+| Max file size | 5 MB |
+| Attachment extensions | `.pdf, .csv, .docx, .xlsx, .xls, .pptx, .jpg, .jpeg, .gif, .png, .mp3, .mp4, .m4v` |
+| Photo extensions | `.jpg, .jpeg, .png` |
 
-**As a** school staff member,
-**I want to** create a new announcement with all required fields and post it,
-**So that** I can keep parents informed.
+### 1.3 Other
 
-**Acceptance Criteria:**
-
-- Staff navigates to `/announcements/new` (page `CreateAnnouncementPage.tsx`).
-- The form is organized into sections (`FormDivider`): **Recipients (PARENTS)**, **Recipients (SCHOOL STAFF)**, **Enquiry Details**, **Content**, **Gallery**, **Settings**.
-- Staff selects target recipients via `IndividualStudentGroupsComboBoxDirty` — by **class, level, school, CCA, custom group, or individual student**. When >1 unique student is selected, a summary line shows "This announcement will be sent to the parents of N students."
-- Staff selects **staff-in-charge** via `StaffGroupsComboBoxDirty` (co-owners). Sub-label: "These staff will be able to view read status, and delete the announcement". **There is NO editor/viewer access-type distinction** (see note below).
-- Staff selects an **enquiry email** (`EmailSelectorDirty`) from staff email, school email, or a custom "Other" address.
-- Staff enters **title** (max 120 chars — error "Exceeded by N characters") and **description** (rich text, max 2000 chars).
-- Staff optionally adds **in-app shortcuts** (`MultipleSelectCheckboxDirty`, hidden when `isIhl`).
-- Staff adds **web links** (up to 3, URL + optional description), **file attachments** (up to 3, ≤5 MB each), and **photo gallery** images (up to 12, with up to 3 cover photos).
-- Staff optionally fills a **schedule post date/time** under Settings.
-- Staff clicks **Preview** (`AnnouncementPreview`), then **Post Now**. A confirmation modal reads "You are about to post the announcement "<title>" to N students."
-- On confirm, `useSubmitForm` → `AnnouncementManager.postAnnouncement` → `AnnouncementService.post` → `POST /api/web/v2/staff/announcements`.
-- On success: redirect to `/announcements` with success notification linking to `/announcements/details/:id`; analytics `AnnouncementCreated` fired.
-- Targets are sent only as `{ targetType, targetId }` (acad year omitted; resolved server-side at send time).
-
-> **Difference from Consent Forms:** Announcements have **no response type** (no Yes/No or Acknowledgement), **no custom questions**, **no event date range / venue**, **no consent due date / reminders**. The recipient summary stats and table are about **Read / Unread**, not replies.
-
-> **Note on staff-in-charge access type (verified):** The Consent Forms request mentions EDITOR vs VIEWER. Announcements do **not** implement any such enum. `AnnouncementOwner` carries only `pgStaffId` + `isDeleted` (no `accessType`); `grep` for `accessType|EDITOR|VIEWER` yields only the unrelated email-template variable `editor` (the creator's display name). All staff-in-charge are equal co-owners who can view read status and delete.
-
-### US-2: Save Announcement as Draft
-
-**As a** school staff member,
-**I want to** save an incomplete announcement as a draft,
-**So that** I can finish it later.
-
-**Acceptance Criteria:**
-
-- Staff clicks "Save as Draft" (`SaveAsDraftStickyBar`).
-- New draft → `POST /api/web/v2/staff/announcements/drafts`; existing → `PUT /api/web/v2/staff/announcements/drafts/:announcementDraftId` (`AnnouncementDraftManager.saveAsDraft`).
-- After first save, URL replaces to `/announcements/drafts/:announcementDraftId`.
-- Toast: "Your draft announcement has been saved successfully."
-- Draft body persists `studentGroups`, `staffGroups`, `title`, `content`, `enquiryEmailAddress`, `urls`, `shortcuts`, `attachments`/`images` (by `fileToken`), and `scheduledDateTime`.
-- Save is **blocked** if title >120 or description >2000.
-- If exactly one of schedule date / time is filled, save is blocked (`incompleteScheduleSendDatetime`).
-
-### US-3: Autosave on Session Timeout
-
-**As a** school staff member,
-**I want** my in-progress announcement to be autosaved before my session expires,
-**So that** I don't lose work.
-
-**Acceptance Criteria:**
-
-- `useAutoSaveStates` (`AutoSaveStatesContext`) drives a `PENDING → TRIGGER → SUCCESS/FAILED` cycle.
-- On `TRIGGER`, if the form is dirty, `processSaveAsDraft(true)` runs with `isAutosave=true`, sending the `pg-no-extend` header so the session is **not** extended.
-- Autosave updates `updatedAt` silently (no toast); on failure sets state `FAILED`.
-
-### US-4: Edit a Draft Announcement
-
-**As a** school staff member,
-**I want to** reopen and continue editing a draft,
-**So that** I can finalize and post it.
-
-**Acceptance Criteria:**
-
-- Staff navigates to `/announcements/drafts/:id`.
-- `useDraftGetter` → `AnnouncementDraftManager.getAnnouncementDraftById` → `GET /api/web/v2/staff/announcements/drafts/:announcementDraftId`.
-- All fields pre-populate (student groups, staff groups, title, `richTextContent`/`content`, email, shortcuts, urls, attachments, images, `scheduledDateTime`).
-- Attachment/photo state derived: `fail → ERROR`, past `expiryDate → EXPIRED`, else `SUCCESS`; expired uploads surface a `NotificationExpiryAlert` via `useDraftUploadExpiryNotifier`.
-
-### US-5: Schedule, Reschedule, and Cancel an Announcement
-
-**As a** school staff member,
-**I want to** schedule an announcement for a future date/time and manage that schedule,
-**So that** I can prepare posts in advance.
-
-**Acceptance Criteria:**
-
-- Staff fills the `SchedulePostDateTimePicker`; on Preview the sticky bar exposes **Schedule Post**.
-- Confirmation modal states students and staff-in-charge are resolved **at send time**, and PG sends a reminder before the scheduled time "unless it's scheduled under the next 24 hours."
-- Schedule new → `POST /api/web/v2/staff/announcements/drafts/schedule`; schedule existing draft → `PUT /api/web/v2/staff/announcements/drafts/schedule/:announcementDraftId`.
-- Scheduled posts appear in **Created by you** with status SCHEDULED; their rows are click-disabled (also for POSTING).
-- **Reschedule** (row action) → `PUT /api/web/v2/staff/announcements/drafts/:announcementDraftId/rescheduleSchedule`.
-- **Cancel** (row action) → modal "Cancel sending this post?" ("the post will be moved to Drafts") → `POST /api/web/v2/staff/announcements/drafts/:announcementDraftId/cancelSchedule`.
-- A failed scheduled send surfaces `scheduledSendFailureCode`; the row expands to show the mapped error message.
-- WOGAA transaction is started on Preview when schedule-eligible and completed on success.
-
-### US-6: View Announcements List (Staff)
-
-**As a** school staff member,
-**I want to** see announcements I created and those shared with me,
-**So that** I can manage them and track reads.
-
-**Acceptance Criteria:**
-
-- Staff navigates to `/announcements` (`StaffAnnouncementList.tsx`). Mantine `Tabs`: **Created by you** / **Shared with you**, synced to URL query `tab`.
-- "Create New" page action → `/announcements/new`.
-- **Created by you** (`GET /api/web/v2/staff/announcements`) columns: **Title**, **Date** (sortable), **Status**, **To Parents Of** (filterable), **# Read** (`readPerStudent / totalStudents` + progress bar, shown only for POSTED), and an action menu. Status values from `EAnnouncementAPIResponseStatus` = DRAFT, POSTED, SCHEDULED, POSTING.
-  - Action menu by status: DRAFT → Edit / Duplicate / Delete; POSTED → Duplicate; SCHEDULED → Reschedule / Cancel.
-  - Row click: DRAFT → `/announcements/drafts/:id`; POSTED → `/announcements/details/:id`; SCHEDULED/POSTING disabled.
-  - Search by title (min 3 chars, debounced); filter modal for Date range + Status; table/filter state persisted in URL.
-- **Shared with you** (`GET /api/web/v2/staff/announcements/shared`) columns add **Created By**; action menu only offers **Duplicate** for POSTED rows.
-
-### US-7: View Announcement Details and Read Status (Staff)
-
-**As a** school staff member,
-**I want to** see who has read a posted announcement,
-**So that** I can follow up with parents who haven't.
-
-**Acceptance Criteria:**
-
-- Staff navigates to `/announcements/details/:id`; data via `GET /api/web/v2/staff/announcements/:id`.
-- Header shows title, target groups, and individual student targets.
-- Two tabs: **Read Status** (default) and **Details**.
-- **Read Status tab** (`ResponseScreen.tsx`):
-  - Summary stats (`StatsGroup`) showing **Total / Read / Unread**; clicking a stat filters the table by read state.
-  - Filter row: **Status** dropdown (onboarding status), **Class** dropdown, **Show Columns** multi-select.
-  - Data table columns: **Name** (fixed), **Class/Index**, **Read Status** (Read/Unread), **Read Time**, **First Read By** (parent identity/name/contact), **Status** (onboarding). IHL variant swaps Class/Index for **Class** + **Student ID**.
-  - **Export to Excel** button (desktop only; mobile shows "not supported on mobile devices.") → `AnnouncementDetailManager.exportToExcel`. Excel columns ordered per `EXCEL_DATA_COLUMNS`.
-- **Details tab** (`DetailsScreen.tsx`): posting details, **Staff-in-charge** (with **Add**, self-**Remove**), **Enquiry Email** (with **Edit**), Description, Shortcuts, Web Link, File attachments, Photo Gallery, and **Other Actions** (Duplicate + Delete).
-
-> **Difference from Consent Forms:** No "Edit Response" per student, no reply-audit history modal, no due-date editing, no "Custodians may edit till due date" banner. There is no per-student write path beyond read tracking.
-
-### US-8: Manage Staff-in-Charge
-
-**As a** school staff member,
-**I want to** add or remove staff-in-charge on a posted announcement,
-**So that** the right staff can oversee it.
-
-**Acceptance Criteria:**
-
-- Details tab → **Add** opens `AddStaffInChargeOverlay` → `POST /api/web/v2/staff/announcements/:id/addStaffInCharge` (body `{ announcementId, staffIDs }`). New staff receive an email notification.
-- A staff-in-charge can **Remove** themselves → confirmation → `PUT /api/web/v2/staff/announcements/:id/removeAccess`; on success redirect to `/announcements`.
-
-### US-9: Edit Enquiry Email (Posted Announcement)
-
-**As a** school staff member,
-**I want to** update the enquiry email on a posted announcement,
-**So that** parents contact the right person.
-
-**Acceptance Criteria:**
-
-- Details tab → **Edit** (enquiry email) opens `EditEmailAddressOverlay` (staff/school/custom).
-- `PUT /api/web/v2/staff/announcements/:id/enquiryEmailAddress` (body includes `enquiryEmailAddress` + `prevEnquiryEmailAddress` for the application log).
-
-> **Difference from Consent Forms:** There is **no Edit Due Date** flow (announcements have no due date).
-
-### US-10: Delete an Announcement
-
-**As a** school staff member,
-**I want to** permanently delete an announcement,
-**So that** obsolete posts are removed.
-
-**Acceptance Criteria:**
-
-- Details tab → tick "I am sure I want to delete this announcement." then **Delete Forever**, confirmation modal.
-- Staff path → `DELETE /api/web/v2/staff/announcements/:id`; admin path → `DELETE /api/web/v2/schoolAdmins/announcements/:id`.
-- Notification `delete_announcement_success`; redirect to `/announcements` (or `/admin/announcements` for admin).
-- A DRAFT can also be deleted from the Created-by-you list → `DELETE /api/web/v2/staff/announcements/drafts/:announcementDraftId`; the row is optimistically removed from the cache.
-
-### US-11: Duplicate an Announcement (Draft or Posted)
-
-**As a** school staff member,
-**I want to** duplicate an existing announcement,
-**So that** I can reuse it.
-
-**Acceptance Criteria:**
-
-- Draft duplication → `POST /api/web/v2/staff/announcements/drafts/duplicate` (body `{ announcementDraftId }`).
-- Posted duplication → `POST /api/web/v2/staff/announcements/duplicate` (body `{ announcementId }`); the server guards ownership.
-- Both return a new `announcementDraftId`; staff is redirected to `/announcements/drafts/:newId` with a success toast.
-
-### US-12: Create from a Prefilled Magic Link
-
-**As a** school staff member,
-**I want to** open a pre-populated announcement from a deep link,
-**So that** I can quickly post content prepared elsewhere (e.g. an AI-drafted post).
-
-**Acceptance Criteria:**
-
-- Staff navigates to `/announcements/prefilled/:magicLinkId`.
-- `usePrefilledGetter` → `GET /api/web/v2/staff/announcements/prefilled/:announcementPrefilledId`.
-- Status is `EPrefilledAnnProcessStatus` (`PROCESSING` / `COMPLETED`); while `PROCESSING` the combo boxes show a loading state and the hook **polls** until `COMPLETED` or surfaces a load error.
-- Title, content, urls, student groups, and staff groups are pre-filled; the form is marked dirty.
-
-### US-13: View Announcements List (School Admin)
-
-**As a** school admin,
-**I want to** oversee all announcements in my school,
-**So that** I can monitor communications.
-
-**Acceptance Criteria:**
-
-- Admin navigates to `/admin/announcements` (legacy `R12` list).
-- List rows show title, "Created by <staff name>", "on <postedDate>", and a recipient `total` indicator; clicking → `/admin/announcements/details/:id`.
-- Admin endpoints under `schoolAdminAnnouncementRouter`: legacy `GET /api/web/v2/schoolAdmins/announcements`; reskin `GET /api/web/v2/schoolAdmins/r12/announcements`; `GET …/:id`; `DELETE …/:id`.
-- Admin details view hides **Add staff-in-charge**, **Edit enquiry email**, and **Duplicate**; admin can still **Delete**.
+| Constraint | Value |
+|-----------|-------|
+| Max web links | 3 |
+| Schedule min delay | 5 minutes from now |
+| Schedule max delay | 21 days (configurable via `SCHEDULE_POST_MAX_NUM_DAYS` env) |
+| Schedule interval | 5-minute intervals only |
 
 ---
 
-## Requirements
+## 2. Business Logic Rules
 
-### Functional Requirements
+### 2.1 Status Model
 
-#### FR-1: Announcement Creation
+**Backend** (`EResourceStatus`): `DRAFT`, `POSTED`, `SCHEDULED`, `POSTING`
 
-- One-way post: **no** response type, custom questions, event dates, venue, or due date.
-- Recipients selectable by class, level, school, CCA, custom group, and/or individual student; targets serialized as `{ targetType, targetId }` only.
-- Staff-in-charge are equal co-owners (no editor/viewer enum); creator is excluded from the submitted staff-in-charge list.
-- Enquiry email from staff email, school email, or custom.
-- Title **max 120 chars**; description rich text **max 2000 chars**.
-- Rich text via Tiptap — supported marks/nodes: **Document, Paragraph, Text, Bold, Italic, Underline, TextAlign (paragraph/orderedList/bulletList), ListItem, OrderedList, BulletList, HardBreak**, plus History, CharacterCount, Placeholder. Stored as `richTextContent` (JSON) with `content` plain-text fallback.
-- Web links: **up to 3**, URL + optional description.
-- File attachments: **up to 3**, **≤5 MB each**, uploaded by `fileToken`.
-- Photo gallery: **up to 12**, **up to 3 cover photos**.
-- In-app shortcuts: `DECLARE_TRAVELS`, `EDIT_CONTACT_DETAILS` (`EAnnouncementShortcutType`). **Hidden entirely when `isIhl`** (no separate SPED hide found — IHL is the variant the code encodes).
+**Frontend display** (`EAnnouncementAPIResponseStatus`):
+| Display Status | Derived From |
+|----------------|-------------|
+| `DRAFT` | EResourceStatus.DRAFT |
+| `OPEN` | POSTED (always OPEN for announcements — no due date) |
+| `SCHEDULED` | EResourceStatus.SCHEDULED |
+| `POSTING` | EResourceStatus.POSTING |
 
-#### FR-2: Draft Management
+### 2.2 Access Control
 
-- Manual save and autosave to the drafts endpoints; new vs existing chosen by presence of `:id`.
-- Autosave sends `pg-no-extend` header so the session is not extended; states driven by `AutoSaveStatesContext`.
-- Drafts persist all fields incl. `scheduledDateTime`; attachment/photo expiry tracked (`expiryDate` → EXPIRED state).
-- Save blocked on title/description over-limit and on partially-filled schedule date/time.
-- Drafts can be edited, duplicated, or deleted.
+| Action | Creator | Staff-in-Charge | School Admin |
+|--------|---------|-----------------|--------------|
+| View details | Yes | Yes | Yes |
+| View read status | Yes | Yes | Yes |
+| Add staff-in-charge | Yes | No | No |
+| Remove self as staff | N/A | Yes | N/A |
+| Edit enquiry email | Yes | No | No |
+| Delete announcement | Yes | Yes | Yes |
+| Duplicate | Yes | Yes | No |
+| Edit/delete draft | Yes | No | No |
 
-#### FR-3: Scheduled Posting
+### 2.3 School Type Variants
 
-- Schedule on create or from an existing draft; reschedule and cancel from the Created-by-you list.
-- Recipients and staff-in-charge are resolved at send time, not at scheduling.
-- Creator reminded before send unless within 24 hours.
-- `scheduledSendFailureCode` tracked; failure message shown in an expandable row.
-- Cancel moves the post back to Drafts.
+**IHL (Institute of Higher Learning):**
+- In-app shortcuts field hidden entirely
 
-#### FR-4: Read Tracking
+**SPED (Special Education):**
+- Excludes shortcut: `EDIT_CONTACT_DETAILS`
+- Other shortcuts (e.g. `DECLARE_TRAVELS`) remain available
 
-- Per recipient, track **Read / Unread** (`readStatus`/`readDate`); no reply values.
-- Summary stats Total / Read / Unread; clicking filters the table.
-- Filter by onboarding **Status**, **Class**, and interactive **Read summary**; configurable **Show Columns**.
-- `# Read` progress = `readPerStudent / totalStudents`, surfaced only for POSTED.
-- "First Read By" shows the parent identity/name/contact of the first read.
+### 2.4 Scheduling Rules
 
-#### FR-5: Export
+| Rule | Detail |
+|------|--------|
+| Scheduled time | Must be future (min 5 minutes), at 5-minute intervals |
+| Max window | 21 days (configurable) |
+| Group resolution | Targets resolved at SEND time, not schedule time |
+| Cancel | Reverts to DRAFT |
+| Failure codes | `INVALID_CREATOR`, `INVALID_FILE`, `INVALID_IMAGE`, `INVALID_RECIPIENT`, `UNEXPECTED_ERROR` |
 
-- Export the filtered read-status table to Excel (`.xlsx`).
-- Export respects column visibility and current filters; columns ordered per `EXCEL_DATA_COLUMNS`.
-- Disabled on mobile.
+### 2.5 Optimistic Concurrency
 
-#### FR-6: Roles and Access
+- Draft updates: `updatedAt` from previous response must match DB value
+- Enquiry email: `prevEnquiryEmailAddress` must match current value
 
-- **Staff (creator/owner):** full CRUD, manage staff-in-charge, edit enquiry email, export, duplicate, schedule.
-- **Staff (shared / co-owner):** see in "Shared with you"; can view read status and **Duplicate** posted; staff-in-charge can self-remove and delete the announcement.
-- **School Admin:** read-only oversight list + delete; no staff management, enquiry-email edit, or duplicate. Uses `/schoolAdmins/` API path.
-- **IHL (Institute of Higher Learning):** in-app shortcuts hidden; response table uses Class + Student ID columns instead of Class/Index.
-- **SPED:** Not separately encoded in the announcement code paths reviewed — the only school-type branch is `isIhl`. _(Consent Forms' SPED shortcut-hiding was not found for announcements; flagged rather than invented.)_
+### 2.6 Auto-Save
 
-#### FR-7: Navigation Prevention
+**Trigger**: Fires when `autoSaveStates === TRIGGER` AND form is dirty.
 
-- Unsaved changes trigger a React-Router `Prompt` ("…Any unsaved changes will be lost.") and `useUnloadEvent` guards browser unload while dirty and not posting.
+**Pre-conditions** (all must be non-empty):
+1. enquiryEmailAddress
+2. title
+3. content (plain text extracted from rich text)
+4. selectedIndividualStudentGroups (at least one)
+5. For scheduled: both `scheduledDateTime.date` and `.time`
 
-#### FR-8: Listing, Search, and URL State
+**Header**: `pg-no-extend: ''` prevents session extension during auto-save.
 
-- Created-by-you / Shared-with-you tabs persisted via `tab` query param.
-- Per-tab table state (pagination, sorting, filters, search) persisted in the URL; title search ≥3 chars with debounce.
+**States**: `PENDING` → `TRIGGER` → `SUCCESS` | `FAILED`
 
-### Key Entities
+### 2.7 Navigation Prevention
 
-| Entity                                         | Description                                                                                           |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `Announcement`                                 | A posted announcement with content, targets, owners, students (with read status), images, attachments |
-| `AnnouncementDraft`                            | A pre-post draft holding all form fields incl. `scheduledDateTime`, by `fileToken` uploads            |
-| `AnnouncementPrefilled`                        | A magic-link pre-population payload with `EPrefilledAnnProcessStatus` (PROCESSING/COMPLETED)          |
-| `AnnouncementRecipient`                        | A targeted student + parent with `readDate`, parent name/phone/relationship, `onBoardedCategory`      |
-| `AnnouncementTarget`                           | A target group: school/level/class/cca/custom (`ETargetType`), acad year resolved server-side         |
-| `AnnouncementOwner`                            | A staff co-owner (`pgStaffId`, `isDeleted`) — **no access-type field**                                |
-| `AnnouncementShortcut`                         | In-app shortcut: `DECLARE_TRAVELS`, `EDIT_CONTACT_DETAILS`                                            |
-| `AnnouncementUrl`                              | A web link (`webLink` + `linkDescription`)                                                            |
-| `AnnouncementAttachment` / `AnnouncementImage` | File attachment / gallery image (name, size, sequence, `isCover`, downloadUrl)                        |
-| `EAnnouncementAPIResponseStatus`               | List row status (DRAFT, POSTED, SCHEDULED, POSTING — mapped from `EResourceStatus`)                   |
+- Triggers when `isDirtyState && !isPosting`
+- Browser unload event handler via `useUnloadEvent`
 
----
+### 2.8 Duplicate Behavior
 
-## Success Criteria
+**Copied**: Title, description, rich text, enquiry email, web links, shortcuts, photos, attachments, staff-in-charge, target groups.
 
-1. **Creation**: Staff can create and post an announcement with recipients, staff-in-charge, rich text, links, attachments, and gallery, receiving confirmation and the post appearing in the list.
-2. **Draft Persistence**: Drafts save/restore all fields incl. schedule and expiry-aware uploads; autosave fires on session-timeout trigger without extending the session.
-3. **Scheduled Posting**: Schedule, reschedule, and cancel work; failure codes render; recipients resolve at send time.
-4. **Read Tracking**: Summary stats (Total/Read/Unread) are accurate; Status/Class/Read filters and Show-Columns combine correctly; IHL column variant renders.
-5. **Export Accuracy**: Excel export matches the filtered table and column order; unavailable on mobile.
-6. **Role-Based Access**: Admin list/details correctly hide add-staff, edit-email, and duplicate; shared-with-you offers only duplicate of posted; IHL hides shortcuts and reskins columns.
-7. **Duplication & Deletion**: Draft and posted duplication both yield a new editable draft; deletion (staff and admin paths) removes the post and redirects with success notice.
-8. **Navigation Safety**: Dirty-state prompt and unload guard prevent accidental loss.
+**NOT copied**: Read receipts, posted date, audit records.
+
+### 2.9 Soft Delete
+
+Sets `isDeleted: true`. Records remain in DB.
+
+### 2.10 Prefilled Announcements
+
+- Staff can create announcements from a platform-provided template
+- Accessed via `/announcements/prefilled/:id`
+- Pre-populates form fields including students/staff targets
+- Validates recipients before populating (shows error for invalid)
 
 ---
 
-## Assumptions
+## 3. Validation Rules
 
-1. The backend is a Node/Express BFF alongside the React frontend, using Sequelize models from `@pgw/db-migration`; staff routes mount under `/api/web/v2/staff` and admin under `/api/web/v2/schoolAdmins`.
-2. File uploads (attachments/photos) use a token flow — files uploaded separately and referenced by `fileToken`.
-3. The Parents Gateway mobile app handles the parent reading flow; this spec covers the staff web portal. Announcements are one-way (read tracking only, no parental responses).
-4. Rich text is Tiptap JSON in `richTextContent` with a `content` plain-text fallback; supported nodes/marks are exactly those registered in `getSupportedExtensions`.
-5. `isIhl` derives from school config in Redux `indexPage`. SPED-specific behavior was **not** found in announcement code paths (only IHL branches); this is flagged, not assumed.
-6. WOGAA tracking is a Singapore-government analytics requirement; used for schedule-post transactions and search/filter.
-7. `EResourceStatus` (DRAFT, POSTED, POSTING, SCHEDULED) is the canonical status enum; `EAnnouncementAPIResponseStatus` maps it for list rows.
-8. The `R12` admin routes (`/schoolAdmins/r12/announcements`) are a transitional reskin coexisting with the legacy admin list.
+### 3.1 Required for Publishing
+
+1. Recipients (at least one student group)
+2. Enquiry email address (valid format)
+3. Title (non-empty, max 120 chars)
+4. Description (non-empty, max 2000 chars, valid rich text JSON)
+
+### 3.2 Field Validation
+
+| Field | Rule |
+|-------|------|
+| Title | Non-empty, max 120 chars |
+| Description | Non-empty plain text, max 2000 chars, valid JSON schema |
+| Enquiry email | Valid email format, max 250 chars |
+| Web links | `isValidLink` (URL format), `isSafeLink` (safety), `isMimeSafeLink` (MIME) |
+| Attachments | Valid non-expired token, size <= 5MB, accepted extension |
+| Photos | Valid non-expired token, accepted extension (jpg/jpeg/png) |
+| Schedule date | Future (5 min+), within 21 days, 5-min interval |
+
+### 3.3 Draft Save Blocking
+
+Save is blocked ONLY when:
+- Title exceeds 120 characters
+- Description exceeds 2000 characters
+- Schedule date/time is incomplete (only date OR only time filled)
+
+All other fields can be empty/partial for draft save.
+
+### 3.4 Rich Text Validation
+
+- `isValidSchema()`: Validates JSON structure
+- `JsonToCharacterCount()`: Extracts plain text char count
+- `JsonToPlainText()`: Converts for counting
+- Server rejects: `exceedRichTextLimit` (>2000 chars), `invalidRichTextSchema` (bad JSON)
+
+---
+
+## 4. Functional Behavior
+
+### 4.1 Create/Edit Form — Field Order
+
+1. Recipients (Parents) — student group combo box
+2. Recipients (School Staff) — staff group combo box (staff-in-charge)
+3. Enquiry Email — selector: staff email / school email / custom
+4. Title — text input with 120 char counter
+5. Description — rich text editor with 2000 char counter
+6. In-App Shortcuts — multi-select checkboxes (hidden for IHL)
+7. Website Links — up to 3 (URL + description each)
+8. File Attachments — upload up to 3 (5MB each)
+9. Photo Gallery — upload up to 12 (max 3 cover)
+10. Schedule Post — optional date/time picker
+
+### 4.2 List Page — Created by You
+
+**Columns**: Title, Date, Status, To Parents Of, Read Metrics
+
+**Actions per status**:
+| Status | Actions |
+|--------|---------|
+| DRAFT | Edit, Delete, Duplicate |
+| SCHEDULED | Reschedule, Cancel send |
+| POSTING | (none) |
+| OPEN | Duplicate, Delete |
+
+### 4.3 List Page — Shared with You
+
+**Columns**: Title, Date, Status, Created By, To Parents Of, Read Metrics
+
+**Actions**: Duplicate, Delete (if co-owner)
+
+### 4.4 List Page — School Admin
+
+All posted announcements in school. Actions: View details, Delete.
+
+### 4.5 Details Page — Read Status Tab
+
+**Summary**: Total recipients, Read count, Unread count
+
+**Table Columns**:
+- Student Name
+- Parent/Guardian Name
+- Read Date
+- Read Status (Read/Unread/Onboarded status)
+
+**Export to Excel**: Available (desktop only)
+
+### 4.6 Details Page — Details Tab
+
+Sections in order:
+1. Posted on [Date] by [Staff Name]
+2. Staff-in-charge list + "Add" button (creator only)
+3. Enquiry email + "Edit" button (creator only)
+4. Description (rich text / plain text)
+5. Shortcuts with icons
+6. Web links with descriptions
+7. Attachments with download links
+8. Photo gallery
+9. OTHER ACTIONS: Duplicate, Delete
+
+### 4.7 Post Flow
+
+1. Preview → Confirmation modal (title + target student count)
+2. API call → If rescan needed, poll draft endpoint
+3. Redirect to list + success notification
+
+### 4.8 Reschedule/Cancel from List
+
+**Reschedule**: Opens date/time picker. Validates same as initial schedule.
+
+**Cancel**: Confirmation modal → reverts to DRAFT.
+
+### 4.9 Edit Enquiry Email
+
+1. Overlay with selector (staff email / school email / custom)
+2. Confirmation modal
+3. Uses `prevEnquiryEmailAddress` for concurrency
+
+### 4.10 Add/Remove Staff-in-Charge
+
+**Add**: Creator opens overlay → selects staff → success notification.
+
+**Remove self**: Staff-in-charge clicks remove → confirmation → redirects to list.
+
+### 4.11 Delete
+
+- Confirmation modal required
+- Soft delete
+- Redirect to list + success notification
+
+### 4.12 Analytics Events (WOGAA)
+
+| Event | Trigger |
+|-------|---------|
+| NewAnnouncementButtonPressed | Create button clicked |
+| AnnouncementViewed | Detail page loaded |
+| AnnouncementReadStatusTabPressed | Read status tab |
+| AnnouncementDetailsTabPressed | Details tab |
+| DuplicatePostCreateDetailsPressed | Duplicate from details |
+| DuplicatePostCreateListingPressed | Duplicate from list |
+| DuplicatePostSuccess | Duplicate succeeded |
+| DuplicatePostFailure | Duplicate failed |
+| AnnouncementDeleted | Deletion completed |
+| StaffInChargeTooltipPressed | Tooltip viewed |
+| ExportToExcelButtonPressed | Export clicked |
+| DeleteAnnouncementButtonPressed | Delete button clicked |
+| SchedulePostAnnouncementCancelled | Schedule cancelled |
+
+---
+
+## 5. API Contracts
+
+### Base
+
+- **Base URL**: `/api/v2`
+- **Staff**: `/api/v2/staff/announcements`
+- **Admin**: `/api/v2/schoolAdmins/announcements`
+- **Auth**: SchoolStaffSessionMiddleware (staff), with `accessControlScope: 'Admin'` (admin)
+- **Rate Limit**: 250 requests per 60 minutes (staff), 20 per 24h (HQ)
+- **Auto-save header**: `pg-no-extend: ''`
+
+### Response Wrapper (all endpoints)
+
+```typescript
+{ resultCode: number; message: string; body: T; metadata?: Record<string, any> }
+```
+
+---
+
+### 5.1 POST `/staff/announcements` — Publish
+
+**Rate Limited**: Yes.
+
+**Request**:
+```typescript
+{
+  announcementDraftId?: number;
+  title: string;
+  content: Record<string, any>;         // Rich text JSON
+  enquiryEmailAddress: string;
+  staffInCharge?: number[];
+  targets: Array<{ targetType: 'CLASS'|'LEVEL'|'SCHOOL'|'CCA'|'GROUP'; targetId: number }>;
+  webLinkList?: Array<{ webLink: string; linkDescription: string }>;
+  photos?: Array<{ fileToken: string; isCover: boolean }>;
+  attachments?: Array<{ fileToken: string }>;
+  inAppShortcutLink?: string[];
+}
+```
+
+**Response**:
+```typescript
+{
+  body: {
+    announcement: {
+      id: number;
+      title: string;
+      content: string;
+      enquiryEmailAddress: string;
+      staffInCharge: number[];
+      targets: Array<{ targetId: number; targetType: string; targetSchool: number; targetAcadYear: string; groupId: number }>;
+      webLinkList: Array<{ webLink: string; linkDescription: string }>;
+      createdBy: string;
+      inAppShortcutLink: string[];
+      owners: Array<{ staffId: number }>;
+    };
+  }
+}
+```
+
+OR `{ body: number }` (draft ID needing file rescan)
+
+---
+
+### 5.2 POST `/staff/announcements/drafts` — Create Draft
+
+**Request** (`TAnnouncementDraftRequestBody`):
+```typescript
+{
+  title?: string;
+  content?: string | null;
+  richTextContent?: Record<string, any> | null;
+  enquiryEmailAddress?: string;
+  urls?: Array<{ webLink: string; linkDescription: string }>;
+  shortcuts?: string[];
+  attachments?: Array<{ fileToken: string }>;
+  images?: { images: Array<{ fileToken: string; isCover: boolean }>; imagesOrigin: string };
+  studentGroups?: Array<{ type: string; label: string; value: string|number }>;
+  staffGroups?: Array<{ type: string; label: string; value: string|number }>;
+  scheduledDateTime?: Date | null;
+}
+```
+
+**Response**: `{ body: { announcementDraftId: number; updatedAt: string } }`
+
+---
+
+### 5.3 PUT `/staff/announcements/drafts/:announcementDraftId` — Update Draft
+
+**Request**: Same as 5.2.
+
+**Response**: `{ body: { announcementDraftId: number; updatedAt: string } }`
+
+---
+
+### 5.4 GET `/staff/announcements/drafts/:announcementDraftId` — Get Draft
+
+**Response**:
+```typescript
+{
+  body: [{
+    announcementDraftId: number;
+    status: 'DRAFT' | 'SCHEDULED' | 'POSTING';
+    postedAnnouncementId: number | null;
+    studentGroups: Array<{ type: string; label: string; value: string }>;
+    staffGroups: Array<{ type: string; label: string; value: string }>;
+    title: string;
+    content: string | null;
+    richTextContent: Record<string, any> | null;
+    enquiryEmailAddress: string;
+    urls: Array<{ webLink: string; linkDescription: string }>;
+    shortcuts: string[];
+    attachments: Array<{ fileToken: string; name: string; size: number; status: 'success'|'failed'|'expired' }>;
+    images: { images: Array<{ fileToken: string; name: string; size: number; isCover: boolean; status: 'success'|'failed'|'expired' }>; imagesOrigin: string };
+    updatedAt: string;
+    pgSchoolId: number;
+    createdBy: number;
+    scheduledDateTime: Date | null;
+    cancelledBy: number | null;
+    cancelledAt: string | null;
+  }]
+}
+```
+
+---
+
+### 5.5 DELETE `/staff/announcements/drafts/:announcementDraftId` — Delete Draft
+
+**Response**: Standard success.
+
+---
+
+### 5.6 POST `/staff/announcements/drafts/duplicate` — Duplicate Draft
+
+**Request**: `{ announcementDraftId: number }`
+
+**Response**: `{ body: { announcementDraftId: number; updatedAt: string } }`
+
+---
+
+### 5.7 POST `/staff/announcements/duplicate` — Duplicate Posted
+
+**Request**: `{ announcementId: number }`
+
+**Response**: `{ body: { announcementDraftId: number; updatedAt: string } }`
+
+---
+
+### 5.8 POST `/staff/announcements/drafts/schedule` — Schedule New
+
+**Request**: Same as 5.2 with mandatory `scheduledDateTime: Date`.
+
+**Response**: `{ body: { announcementDraftId: number; updatedAt: string } }`
+
+---
+
+### 5.9 PUT `/staff/announcements/drafts/schedule/:announcementDraftId` — Schedule Existing Draft
+
+**Request**: `{ scheduledDateTime: Date }`
+
+**Response**: Draft details.
+
+---
+
+### 5.10 PUT `/staff/announcements/drafts/:announcementDraftId/rescheduleSchedule` — Reschedule
+
+**Request**: `{ scheduledDateTime: Date }`
+
+**Response**: Updated draft details.
+
+---
+
+### 5.11 POST `/staff/announcements/drafts/:announcementDraftId/cancelSchedule` — Cancel
+
+**Request**: None.
+
+**Response**: Standard success.
+
+---
+
+### 5.12 GET `/staff/announcements` — List Created by You
+
+**Response**:
+```typescript
+{
+  body: Array<{
+    id: string; postId: number; title: string; date: Date;
+    status: 'DRAFT'|'OPEN'|'SCHEDULED'|'POSTING';
+    toParentsOf: string[];
+    readMetrics: { readCount: number; totalRecipients: number };
+    scheduledSendFailureCode: string | null;
+  }>
+}
+```
+
+---
+
+### 5.13 GET `/staff/announcements/shared` — List Shared with You
+
+**Response**:
+```typescript
+{
+  body: Array<{
+    id: string; postId: number; title: string; date: Date;
+    status: 'OPEN';
+    createdByName: string;
+    toParentsOf: string[];
+    readMetrics: { readCount: number; totalRecipients: number };
+  }>
+}
+```
+
+---
+
+### 5.14 GET `/staff/announcements/:id` — Get Posted Announcement Details
+
+**Response**:
+```typescript
+{
+  body: [{
+    announcementId: number;
+    title: string;
+    content: string;
+    richTextContent: Record<string, any> | null;
+    enquiryEmailAddress: string;
+    postedDate: Date;
+    staffName: string;
+    createdBy: number;
+    createdAt: Date;
+    webLinkList: Array<{ webLink: string; linkDescription: string | null }>;
+    shortcutLinkList: Array<{ shortcutName: string }>;
+    targets: Array<{ announcementId: number; targetSchool: number; targetType: string; targetAcadYear: string|null; targetId: number; targetName: string }>;
+    staffOwners: Array<{ staffName: string; staffID: number }>;
+    images: Array<{ imageId: number; size: number; name: string; url: string; thumbnailUrl: string; expiryDate?: string; isCover: boolean }>;
+    announcementRecipients: Array<{
+      announcementId: number;
+      studentId: number;
+      readDate: Date | null;
+      parent: { parentId: number; parentName: string; phone: string; relationship: string|null } | null;
+      student: { studentId: number; studentName: string; indexNumber: string; className: string };
+      onBoardedCategory: 'Onboarded' | 'Not Onboarded';
+    }>;
+    attachments?: Array<{ name: string; size: number; sequence: number; downloadUrl: string }>;
+  }]
+}
+```
+
+---
+
+### 5.15 DELETE `/staff/announcements/:id` — Delete Posted
+
+**Response**: Standard success.
+
+---
+
+### 5.16 PUT `/staff/announcements/:id/enquiryEmailAddress` — Update Email
+
+**Request**:
+```typescript
+{ enquiryEmailAddress: string; prevEnquiryEmailAddress: string }
+```
+
+**Response**: Standard success.
+
+---
+
+### 5.17 POST `/staff/announcements/:id/addStaffInCharge` — Add Staff
+
+**Request**: `{ announcementId: number; staffIDs: number[] }`
+
+**Response**: Standard success.
+
+---
+
+### 5.18 PUT `/staff/announcements/:id/removeAccess` — Remove Self
+
+**Request**: None.
+
+**Response**: Standard success.
+
+---
+
+### 5.19 GET `/staff/announcements/prefilled/:announcementPrefilledId` — Get Prefilled
+
+**Response**: Prefilled announcement details (same shape as draft but from platform template).
+
+---
+
+### 5.20 GET `/schoolAdmins/announcements` — Admin List (Legacy)
+
+**Response**: Array of summary data.
+
+---
+
+### 5.21 GET `/schoolAdmins/r12/announcements` — Admin List (Current)
+
+**Response**:
+```typescript
+{
+  body: Array<{
+    id: string; postId: number; title: string; date: Date;
+    status: 'OPEN';
+    createdByName: string; toParentsOf: string[];
+    readMetrics: { readCount: number; totalRecipients: number };
+  }>
+}
+```
+
+---
+
+### 5.22 GET `/schoolAdmins/announcements/:id` — Admin Get Details
+
+**Response**: Same shape as 5.14.
+
+---
+
+### 5.23 DELETE `/schoolAdmins/announcements/:id` — Admin Delete
+
+**Response**: Standard success.
+
+---
+
+## 6. Error Handling
+
+### 6.1 Server Error Messages
+
+| Key | Message |
+|-----|---------|
+| exceedRichTextLimit | Content exceeds 2000 characters |
+| invalidRichTextSchema | Rich text JSON format invalid |
+| unauthorised | User not creator/staff-in-charge |
+| notExist | Announcement/draft not found |
+| invalidTargetAcadYear | Academic year mismatch |
+| noTargetAccess | User cannot access target groups |
+| invalidAnnouncementCode | Invalid code/type |
+
+### 6.2 Scheduled Send Failure Codes
+
+| Code | Meaning |
+|------|---------|
+| INVALID_CREATOR | Creator account became invalid |
+| INVALID_FILE | File attachment error |
+| INVALID_IMAGE | Image attachment error |
+| INVALID_RECIPIENT | All recipients became invalid |
+| UNEXPECTED_ERROR | System error |
+
+### 6.3 HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 400 | Validation error |
+| 401 | Unauthorized (session expired) |
+| 403 | Forbidden (insufficient permission) |
+| 404 | Not found |
+| 409 | Conflict (stale updatedAt / concurrent edit) |
+| 429 | Rate limited |
+| 500 | Internal error |
